@@ -23,4 +23,9 @@ export default tseslint.config(
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },
+  {
+    // Context modules export a provider together with its hook; test helpers are not refreshed.
+    files: ['src/lib/**', 'src/test/**', 'src/pebble/**', 'src/components/Toast.tsx'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
 )

@@ -1,0 +1,47 @@
+// Interface copy in English and French. Sentence case, plain words, buttons say what happens.
+
+export const en = {
+  appName: 'Cairn',
+  navHome: 'Home',
+  navStart: 'Plan a goal',
+  navSimulate: 'Simulator',
+  navGoals: 'My goals',
+  skipToContent: 'Skip to content',
+  footer: 'Demo project. Simplified assumptions, not investment advice.',
+  themeLight: 'Notebook',
+  themeDark: 'Blueprint',
+  themeToggle: 'Switch to {theme} theme',
+  languageToggle: 'Passer en français',
+  loading: 'Loading…',
+  notFoundTitle: 'This page is not in the notebook',
+  notFoundBody: 'The link may be old. Go back to the first page and start from there.',
+  goHome: 'Back to the first page',
+  errorTitle: 'Something went wrong',
+  errorBody: 'The page could not load. Try again in a moment.',
+  tryAgain: 'Try again',
+  close: 'Close',
+} as const
+
+export type Strings = { [K in keyof typeof en]: string }
+
+export const fr: Strings = {
+  appName: 'Cairn',
+  navHome: 'Accueil',
+  navStart: 'Planifier un objectif',
+  navSimulate: 'Simulateur',
+  navGoals: 'Mes objectifs',
+  skipToContent: 'Aller au contenu',
+  footer: 'Projet de démonstration. Hypothèses simplifiées, pas un conseil en investissement.',
+  themeLight: 'Cahier',
+  themeDark: 'Plan',
+  themeToggle: 'Passer au thème {theme}',
+  languageToggle: 'Switch to English',
+  loading: 'Chargement…',
+  notFoundTitle: "Cette page n'est pas dans le cahier",
+  notFoundBody: 'Le lien est peut-être ancien. Revenez à la première page.',
+  goHome: 'Retour à la première page',
+  errorTitle: 'Un problème est survenu',
+  errorBody: "La page n'a pas pu se charger. Réessayez dans un instant.",
+  tryAgain: 'Réessayer',
+  close: 'Fermer',
+}
