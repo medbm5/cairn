@@ -8,11 +8,9 @@ services:
     dockerfilePath: ./api/Dockerfile
     dockerContext: ./api
     healthCheckPath: /health
-    # Migrate, seed the demo once (a no-op when goals exist), then serve.
-    dockerCommand: >-
-      sh -c "alembic upgrade head
-      && python scripts/seed.py --if-empty
-      && uvicorn cairn.main:app --host 0.0.0.0 --port $PORT"
+    # Migrate, seed the demo once, then serve. Kept in a script because Render
+    # passes dockerCommand quotes through literally.
+    dockerCommand: sh scripts/start.sh
     envVars:
       - key: ENVIRONMENT
         value: production
