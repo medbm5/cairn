@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { Field } from '../../components/Field'
+import { MonthPicker } from '../../components/MonthPicker'
 import { SketchButton } from '../../components/sketch/SketchButton'
 import { SketchBox } from '../../components/sketch/SketchBox'
 import { useLanguage, type StringKey } from '../../lib/i18n'
@@ -8,6 +9,13 @@ import { usePebble, usePebbleAnchor } from '../../pebble/PebbleProvider'
 import { validateGoal, type GoalErrors, type GoalForm } from './goalForm'
 import { GoalTypeIcon } from './GoalTypeIcon'
 import { GOAL_TYPES } from './goalTypes'
+
+/** The month `months` from now, as YYYY-MM. */
+function monthsFromNow(months: number): string {
+  const today = new Date()
+  const date = new Date(today.getFullYear(), today.getMonth() + months, 1)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
 
 export function GoalStep({
   form,
@@ -90,12 +98,13 @@ export function GoalStep({
         error={error('target')}
       />
       <div ref={dateAnchor}>
-        <Field
+        <MonthPicker
           label={t('dateLabel')}
           hint={t('dateHint')}
-          type="month"
           value={form.date}
-          onChange={(e) => set('date', e.target.value)}
+          onChange={(date) => set('date', date)}
+          min={monthsFromNow(12)}
+          max={monthsFromNow(480)}
           onFocus={() => {
             if (explainedDate.current) return
             explainedDate.current = true

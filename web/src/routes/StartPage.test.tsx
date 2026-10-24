@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, vi } from 'vitest'
 import { mockReducedMotion, renderWithProviders } from '../test/utils'
@@ -66,10 +66,9 @@ test('onboarding creates the goal from the form, answers and profile', async () 
   await user.type(screen.getByLabelText('Name your goal'), 'A flat in Lyon')
   await user.type(screen.getByLabelText('How much do you need? (€)'), '60 000')
   const year = new Date().getFullYear() + 8
-  // jsdom sanitises month inputs typed key by key, so set the value in one go.
-  fireEvent.change(screen.getByLabelText('When do you need it?'), {
-    target: { value: `${year}-06` },
-  })
+  await user.click(screen.getByRole('button', { name: /^When do you need it\?/ }))
+  await user.selectOptions(screen.getByLabelText('Year'), String(year))
+  await user.click(screen.getByRole('button', { name: `June ${year}` }))
   await user.type(screen.getByLabelText('How much can you put aside each month? (€)'), '400')
   await user.click(screen.getByRole('button', { name: 'Continue' }))
 
