@@ -3,8 +3,11 @@
 **Plan a life goal on paper with Pebble, a little robot that explains investing in everyday words.**
 
 [Live demo](https://your-app.vercel.app) · [API docs](https://your-api.onrender.com/docs)
+<!-- Replace both links once deployed (see docs/deploy.md). -->
 
-![Cairn demo](docs/demo.gif)
+<!-- Demo GIF placeholder: record the landing sketch, onboarding and a 2008 replay, save it as
+     docs/demo.gif, then replace this comment with: ![Cairn demo](docs/demo.gif) -->
+_Demo GIF coming soon._
 
 > Demo project built to explore goal-based investing. Simplified assumptions, not investment advice. Not affiliated with any company.
 
@@ -23,12 +26,32 @@
 
 ```mermaid
 flowchart LR
-  W[Web app<br/>React + TypeScript<br/>Vercel] -->|REST| A[FastAPI<br/>Render]
-  A --> D[(PostgreSQL)]
-  A --> X[Explainability layer<br/>OpenAI API + glossary fallback]
-  A --> S[Sentry]
+  subgraph Web["Web app (React + TypeScript, Vercel)"]
+    UI[Screens and hand-drawn charts] --- P[Pebble]
+  end
+  subgraph API["API (FastAPI, Render)"]
+    R[Routers] --> SV[Services<br/>goals, ledger]
+    R --> E[Explainability layer<br/>facts, number guard, templates]
+    SV --> DM[Domain, pure functions<br/>profiles, simulation, glide path,<br/>rebalancing, stress tests]
+    E -. facts from .-> DM
+  end
+  UI -->|REST, typed client| R
+  P -->|POST /explain| E
+  E -->|optional| O[OpenAI API]
+  SV --> D[(PostgreSQL)]
+  API --> S[Sentry]
+  Web --> S
   D --> M[Metabase]
 ```
+
+- **Domain** (`api/src/cairn/domain`): pure, typed functions with no I/O. Easy to test, including
+  with property-based tests.
+- **Services** (`api/src/cairn/services`): use cases that combine the domain with the database.
+  All money moves through `post_entry`, which only accepts balanced entries.
+- **Routers** (`api/src/cairn/routers`): a thin HTTP layer with Pydantic validation.
+- **Web** (`web/src`): screens in `routes/`, features in `features/`, Pebble in `pebble/`,
+  charts in `charts/`, hand-drawn primitives in `components/sketch/`. API types are generated
+  from the OpenAPI schema.
 
 The simulation, glide path, rebalancing and ledger are deterministic Python code covered by unit and property-based tests. The explainability layer receives the facts the engine already computed and rewrites them in everyday language. A guard checks that every number in an explanation comes from those facts; otherwise a written template is used. The app works fully without an OpenAI key.
 
@@ -52,18 +75,30 @@ The interface is drawn by hand, like a plan sketched on a notebook (or a bluepri
 ## Run locally
 
 ```bash
-# API, database and Metabase
+# API (http://localhost:8000), database and Metabase (http://localhost:3000)
 cp api/.env.example api/.env
 docker compose -f infra/docker-compose.yml up --build
+# Ports busy? API_PORT=8010 DB_PORT=5433 METABASE_PORT=3001 docker compose ... up
 
-# Web app
+# Demo data: three goals with 24 months of history (safe to run twice)
+docker compose -f infra/docker-compose.yml exec api python scripts/seed.py
+
+# Web app (http://localhost:5173)
 cd web
-cp .env.example .env
+cp .env.example .env        # VITE_API_URL points at the API
 npm install
 npm run dev
 ```
 
 The app runs without an OpenAI key or Sentry DSN; those features fall back gracefully.
+
+Without Docker, run the API with uv: `cd api && uv sync && uv run alembic upgrade head &&
+uv run uvicorn cairn.main:app --reload` (it needs a PostgreSQL `DATABASE_URL`).
+
+After changing the API, regenerate the web app's types:
+`cd api && uv run python scripts/export_openapi.py && cd ../web && npm run gen:api`.
+
+More: [deploying to Render and Vercel](docs/deploy.md) · [Metabase questions](docs/metabase.md).
 
 ## Monitoring
 
@@ -90,8 +125,14 @@ The app runs without an OpenAI key or Sentry DSN; those features fall back grace
 ## Tests
 
 ```bash
-cd api && uv run pytest        # unit and property-based tests
-cd web && npm run test         # component and utility tests
+# API: lint, format, strict typing, unit and property-based tests
+cd api && uv run ruff check . && uv run ruff format --check . && uv run mypy src && uv run pytest
+uv run pytest --cov=cairn.domain --cov=cairn.services --cov=cairn.explain   # CI requires 85%
+TEST_DATABASE_URL=postgresql+psycopg://cairn:cairn@localhost:5432/cairn_test uv run pytest
+# (tests use in-memory SQLite unless TEST_DATABASE_URL points at Postgres, as in CI)
+
+# Web: lint, types, component and utility tests, production build
+cd web && npm run lint && npm run typecheck && npm run test && npm run build
 ```
 
 ## Decision records
@@ -129,6 +170,6 @@ The project was built in small, reviewable slices, one commit each. Full specifi
 | 18 | Deployment | `chore(deploy): add Render blueprint and Vercel configuration` |
 | 19 | Documentation | `docs: add architecture, decision records and AI usage notes` |
 
-## Built with AI, reviewed by hand
+## Built with AI
 
-Claude Code helped build this project slice by slice. Every slice had to pass linting, strict typing and tests before it was committed, and the money-handling code was reviewed line by line. See [docs/ai-usage.md](docs/ai-usage.md) for what worked and what was rewritten.
+Claude Code built this project slice by slice from [BUILD_PLAN.md](BUILD_PLAN.md). Every slice had to pass linting, strict typing and tests before it was committed, and the invariants that protect money (balanced entries, exact cent splits, reconciliation, idempotent deposits) are property-tested. At runtime the language model only rephrases figures the engine computed, behind a number guard. See [docs/ai-usage.md](docs/ai-usage.md) for what was caught and rewritten along the way, and for the human review still to record.
