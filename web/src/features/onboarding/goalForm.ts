@@ -36,6 +36,15 @@ export function monthsUntil(yearMonth: string, today: Date): number | null {
   return (Number(match[1]) - today.getFullYear()) * 12 + Number(match[2]) - (today.getMonth() + 1)
 }
 
+/** The questionnaire's horizon answer for a goal this many months away (option ids from the API). */
+export function horizonAnswer(months: number): string {
+  if (months < 36) return 'lt3'
+  if (months < 60) return '3to5'
+  if (months < 120) return '5to10'
+  if (months < 240) return '10to20'
+  return 'gt20'
+}
+
 /** The goal date as an ISO day: same day of month as today (capped at 28), so months are whole. */
 export function targetDate(yearMonth: string, today: Date): string {
   const day = String(Math.min(today.getDate(), 28)).padStart(2, '0')

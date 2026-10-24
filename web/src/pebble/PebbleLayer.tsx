@@ -12,6 +12,8 @@ import { SpeechContent } from './SpeechContent'
 const FIGURE_W = 88
 const FIGURE_H = 103
 const MARGIN = 16
+const BUBBLE_GAP = 18
+const MIN_BUBBLE_HEIGHT = 120
 
 function useIsMobile(): boolean {
   const query = '(max-width: 767px)'
@@ -150,8 +152,15 @@ export function PebbleLayer() {
     Math.max(placement.x + FIGURE_W - bubbleWidth, 16),
     window.innerWidth - bubbleWidth - 16,
   )
-  const above = placement.y - bubbleSize.height - 18 > 8
-  const bubbleTop = above ? placement.y - bubbleSize.height - 18 : placement.y + FIGURE_H + 18
+  // The bubble is fixed, so page scrolling never reveals a cut-off part: it goes on the side of
+  // Pebble with room for it (or the most room), and never taller than that room.
+  const spaceAbove = placement.y - BUBBLE_GAP - MARGIN
+  const spaceBelow = window.innerHeight - (placement.y + FIGURE_H + BUBBLE_GAP) - MARGIN
+  const above = bubbleSize.height <= spaceAbove || spaceAbove >= spaceBelow
+  const bubbleMaxHeight = Math.max(MIN_BUBBLE_HEIGHT, above ? spaceAbove : spaceBelow)
+  const bubbleTop = above
+    ? placement.y - BUBBLE_GAP - bubbleSize.height
+    : placement.y + FIGURE_H + BUBBLE_GAP
   const showBubble = current !== null || statusLine !== null
   const transition = reduced
     ? { duration: 0 }
@@ -185,6 +194,7 @@ export function PebbleLayer() {
           <SpeechBubble
             id={`bubble-${current?.id ?? 'status'}`}
             tail={placement.facing === 'left' ? 'right' : 'left'}
+            maxHeight={bubbleMaxHeight}
           >
             {current ? <SpeechContent handwritten /> : <p className="font-hand">{statusLine}</p>}
           </SpeechBubble>

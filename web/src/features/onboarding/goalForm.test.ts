@@ -1,4 +1,4 @@
-import { monthsUntil, parseEuros, targetDate, validateGoal } from './goalForm'
+import { horizonAnswer, monthsUntil, parseEuros, targetDate, validateGoal } from './goalForm'
 
 test('parses euro amounts typed in English or French style', () => {
   expect(parseEuros('12000')).toBe(1_200_000)
@@ -35,4 +35,12 @@ test('validates every field with a clear message key', () => {
       today,
     ),
   ).toEqual({})
+})
+
+test('the goal date answers the horizon question', () => {
+  expect(horizonAnswer(12)).toBe('lt3')
+  expect(horizonAnswer(36)).toBe('3to5')
+  expect(horizonAnswer(119)).toBe('5to10')
+  expect(horizonAnswer(120)).toBe('10to20')
+  expect(horizonAnswer(240)).toBe('gt20')
 })

@@ -4,12 +4,19 @@ import { useLanguage } from '../lib/i18n'
 import { useCreateGoal, type Profile } from '../lib/queries'
 import { usePebble } from '../pebble/PebbleProvider'
 import { GoalStep } from '../features/onboarding/GoalStep'
-import { parseEuros, targetDate, type GoalForm } from '../features/onboarding/goalForm'
+import {
+  horizonAnswer,
+  monthsUntil,
+  parseEuros,
+  targetDate,
+  type GoalForm,
+} from '../features/onboarding/goalForm'
 import { ProfileReveal } from '../features/onboarding/ProfileReveal'
 import { QuestionsStep } from '../features/onboarding/QuestionsStep'
 
 type Step = 'goal' | 'questions' | 'profile'
 const STEPS: Step[] = ['goal', 'questions', 'profile']
+const HORIZON_QUESTION = 'horizon'
 
 export function StartPage() {
   const { t } = useLanguage()
@@ -61,11 +68,21 @@ export function StartPage() {
         </p>
       </div>
       {step === 'goal' && (
-        <GoalStep form={form} onChange={setForm} onDone={() => setStep('questions')} />
+        <GoalStep
+          form={form}
+          onChange={setForm}
+          onDone={() => {
+            // The goal date already says when the money is needed: answer that question for them.
+            const months = monthsUntil(form.date, new Date()) ?? 0
+            setAnswers((a) => ({ ...a, [HORIZON_QUESTION]: horizonAnswer(months) }))
+            setStep('questions')
+          }}
+        />
       )}
       {step === 'questions' && (
         <QuestionsStep
           answers={answers}
+          skip={[HORIZON_QUESTION]}
           onAnswer={(question, option) => setAnswers((a) => ({ ...a, [question]: option }))}
           onBack={() => setStep('goal')}
           onDone={() => setStep('profile')}

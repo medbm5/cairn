@@ -8,10 +8,13 @@ export function SpeechBubble({
   id,
   children,
   tail = 'right',
+  maxHeight,
 }: {
   id: string
   children: ReactNode
   tail?: 'left' | 'right'
+  /** The room left on screen, in px: longer text scrolls inside the bubble. */
+  maxHeight?: number
 }) {
   const [ref, { width, height }] = useElementSize<HTMLDivElement>()
   const paths = useMemo(() => {
@@ -49,6 +52,7 @@ export function SpeechBubble({
       <div
         data-lenis-prevent
         className="relative max-h-[min(26rem,60vh)] overflow-y-auto overscroll-contain p-4"
+        style={{ maxHeight }}
       >
         {children}
       </div>

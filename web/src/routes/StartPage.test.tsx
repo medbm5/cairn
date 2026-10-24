@@ -72,9 +72,11 @@ test('onboarding creates the goal from the form, answers and profile', async () 
   await user.type(screen.getByLabelText('How much can you put aside each month? (€)'), '400')
   await user.click(screen.getByRole('button', { name: 'Continue' }))
 
-  // Step 2: one question per screen.
-  await user.click(await screen.findByLabelText('In more than 20 years'))
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  // Step 2: one question per screen; the horizon comes from the goal date, so it is not asked.
+  expect(
+    await screen.findByText('Your investments fall by 20%. What do you do?'),
+  ).toBeInTheDocument()
+  expect(screen.queryByText('When will you need this money?')).not.toBeInTheDocument()
   await user.click(await screen.findByLabelText('Wait it out'))
   await user.click(screen.getByRole('button', { name: 'Continue' }))
 
@@ -93,5 +95,6 @@ test('onboarding creates the goal from the form, answers and profile', async () 
   })
   expect(created.target_date.startsWith(`${year}-06-`)).toBe(true)
   const scored = JSON.parse(requests.find((r) => r.url.includes('/score'))!.body)
-  expect(scored.answers).toEqual({ horizon: 'gt20', drop_reaction: 'wait' })
+  // June, eight years ahead: 90 to 101 months away whatever today's month, so "5 to 10 years".
+  expect(scored.answers).toEqual({ horizon: '5to10', drop_reaction: 'wait' })
 })

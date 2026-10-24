@@ -6,14 +6,19 @@ import { useLanguage } from '../../lib/i18n'
 import { useQuestionnaire } from '../../lib/queries'
 import { usePebble } from '../../pebble/PebbleProvider'
 
-/** The six risk questions, one per screen, with a hand-drawn progress line. */
+/**
+ * The risk questions, one per screen, with a hand-drawn progress line. Questions in `skip` are
+ * already answered from the goal form and are not asked again.
+ */
 export function QuestionsStep({
   answers,
+  skip = [],
   onAnswer,
   onBack,
   onDone,
 }: {
   answers: Record<string, string>
+  skip?: string[]
   onAnswer: (questionId: string, optionId: string) => void
   onBack: () => void
   onDone: () => void
@@ -35,7 +40,7 @@ export function QuestionsStep({
     )
   }
 
-  const questions = questionnaire.data
+  const questions = questionnaire.data.filter((q) => !skip.includes(q.id))
   const question = questions[index]
   const chosen = answers[question.id]
   const last = index === questions.length - 1
