@@ -1,0 +1,179 @@
+"""Explain a topic: cached model output when it passes the checks, a template otherwise."""
+
+import hashlib
+import json
+import threading
+import time
+from collections import OrderedDict, deque
+from typing import Literal
+
+from pydantic import BaseModel
+
+from cairn.explain.client import OpenAIExplainer
+from cairn.explain.facts import FactsModel, Topic
+from cairn.explain.fallbacks import Text, fallback
+from cairn.explain.glossary import GLOSSARY, Language
+from cairn.explain.guard import unknown_numbers
+from cairn.logging import get_logger
+
+log = get_logger("cairn.explain")
+
+Level = Literal["simple", "more_detail"]
+WORD_LIMITS: dict[str, int] = {"simple": 60, "more_detail": 140}
+
+
+class Explanation(BaseModel):
+    title: str
+    body: str
+    analogy: str | None
+    terms_used: list[str]
+    source: Literal["ai", "fallback"]
+
+
+class ResponseCache:
+    """Small in-memory LRU cache, so the same explanation is never paid for twice."""
+
+    def __init__(self, max_items: int = 1_000) -> None:
+        self._items: OrderedDict[str, Explanation] = OrderedDict()
+        self._max_items = max_items
+        self._lock = threading.Lock()
+
+    def get(self, key: str) -> Explanation | None:
+        with self._lock:
+            if key in self._items:
+                self._items.move_to_end(key)
+                return self._items[key]
+            return None
+
+    def put(self, key: str, value: Explanation) -> None:
+        with self._lock:
+            self._items[key] = value
+            self._items.move_to_end(key)
+            while len(self._items) > self._max_items:
+                self._items.popitem(last=False)
+
+    def clear(self) -> None:
+        with self._lock:
+            self._items.clear()
+
+
+class RateLimiter:
+    """Sliding-window limit of `limit` calls per `window` seconds for each key (client IP)."""
+
+    def __init__(self, limit: int, window: float) -> None:
+        self.limit = limit
+        self.window = window
+        self._calls: dict[str, deque[float]] = {}
+        self._lock = threading.Lock()
+
+    def allow(self, key: str) -> bool:
+        now = time.monotonic()
+        with self._lock:
+            calls = self._calls.setdefault(key, deque())
+            while calls and now - calls[0] > self.window:
+                calls.popleft()
+            if len(calls) >= self.limit:
+                return False
+            calls.append(now)
+            return True
+
+    def reset(self) -> None:
+        with self._lock:
+            self._calls.clear()
+
+
+def cache_key(
+    topic: Topic, facts: FactsModel | None, term: str | None, level: Level, language: Language
+) -> str:
+    payload = {
+        "topic": topic,
+        "facts": facts.model_dump(mode="json") if facts else None,
+        "term": term,
+        "level": level,
+        "language": language,
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+
+
+def build_prompt(
+    topic: Topic,
+    facts: FactsModel | None,
+    term: str | None,
+    level: Level,
+    language: Language,
+    terms: list[str],
+) -> str:
+    glossary = {
+        key: {"term": GLOSSARY[key].term[language], "meaning": GLOSSARY[key].definition[language]}
+        for key in terms
+    }
+    return "\n".join(
+        [
+            f"TOPIC: {topic}" + (f" ({term})" if term else ""),
+            f"LANGUAGE: {'French' if language == 'fr' else 'English'}",
+            f"WORD LIMIT FOR BODY: {WORD_LIMITS[level]}",
+            "AMOUNTS: values ending in _cents are euro cents; write them in euros.",
+            "FRACTIONS: 0.25 means 25%.",
+            f"FACTS: {json.dumps(facts.model_dump(mode='json') if facts else {})}",
+            f"GLOSSARY: {json.dumps(glossary, ensure_ascii=False)}",
+        ]
+    )
+
+
+def check_generated(
+    title: str, body: str, analogy: str | None, facts: FactsModel | None, level: Level
+) -> str | None:
+    """Return why the generated text is rejected, or None if it passes."""
+    if len(body.split()) > WORD_LIMITS[level]:
+        return "too_long"
+    unknown = unknown_numbers(" ".join([title, body, analogy or ""]), facts)
+    if unknown:
+        return f"unknown_numbers:{unknown}"
+    return None
+
+
+def explain(
+    *,
+    topic: Topic,
+    facts: FactsModel | None,
+    term: str | None,
+    level: Level,
+    language: Language,
+    explainer: OpenAIExplainer | None,
+    cache: ResponseCache,
+) -> Explanation:
+    key = cache_key(topic, facts, term, level, language)
+    cached = cache.get(key)
+    if cached is not None:
+        return cached
+
+    template: Text = fallback(topic, facts, term, level, language)
+    if explainer is not None:
+        prompt = build_prompt(topic, facts, term, level, language, template.terms_used)
+        generated = explainer.generate(prompt)
+        if generated is None:
+            log.warning("explain.fallback", topic=topic, reason="no_output")
+        else:
+            reason = check_generated(
+                generated.title, generated.body, generated.analogy, facts, level
+            )
+            if reason is None:
+                explanation = Explanation(
+                    title=generated.title,
+                    body=generated.body,
+                    analogy=generated.analogy,
+                    terms_used=[t for t in generated.terms_used if t in GLOSSARY],
+                    source="ai",
+                )
+                cache.put(key, explanation)
+                return explanation
+            log.warning("explain.guard_rejected", topic=topic, reason=reason)
+
+    # Templates are not cached: they are free, and a later call may reach the model.
+    return Explanation(
+        title=template.title,
+        body=template.body,
+        analogy=template.analogy,
+        terms_used=template.terms_used,
+        source="fallback",
+    )

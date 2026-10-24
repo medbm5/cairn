@@ -2,13 +2,22 @@
 
 from datetime import date, datetime
 from enum import StrEnum
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal, Self
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    model_validator,
+)
 
 from cairn.domain.dates import months_between
 from cairn.domain.profiles import AssetClass, RiskProfile
 from cairn.domain.stress import Scenario
+from cairn.explain.facts import FACT_MODELS, FactsModel, Topic
+from cairn.explain.glossary import GLOSSARY
 
 Language = Literal["en", "fr"]
 
@@ -236,3 +245,30 @@ class StressTestOut(BaseModel):
     weights: dict[AssetClass, float]
     without_rebalancing: ReplayOut
     with_rebalancing: ReplayOut
+
+
+# --- Explanations ---
+
+
+class ExplainRequest(BaseModel):
+    topic: Topic
+    facts: dict[str, Any] | None = None
+    term: str | None = None
+    level: Literal["simple", "more_detail"] = "simple"
+    language: Language = "en"
+
+    @model_validator(mode="after")
+    def check_topic_inputs(self) -> Self:
+        if self.topic == Topic.TERM:
+            if self.term not in GLOSSARY:
+                raise ValueError(f"Unknown term '{self.term}'. Known terms: {sorted(GLOSSARY)}.")
+        elif self.facts is None:
+            raise ValueError(f"Topic '{self.topic}' needs facts.")
+        else:
+            FACT_MODELS[self.topic].model_validate(self.facts)
+        return self
+
+    def parsed_facts(self) -> FactsModel | None:
+        if self.topic == Topic.TERM or self.facts is None:
+            return None
+        return FACT_MODELS[self.topic].model_validate(self.facts)
