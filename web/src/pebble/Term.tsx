@@ -22,7 +22,8 @@ export function Term({
     if (!element || typeof element.getBoundingClientRect !== 'function') return
     const annotation = annotate(element, {
       type: 'underline',
-      color: 'var(--graphite)',
+      // currentColor follows the theme's ink; CSS variables do not work in SVG attributes.
+      color: 'currentColor',
       strokeWidth: 1.5,
       padding: 1,
       iterations: 1,
