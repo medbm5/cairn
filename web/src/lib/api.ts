@@ -5,7 +5,11 @@ export type Schemas = components['schemas']
 
 export const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
-export const api = createClient<paths>({ baseUrl: API_URL })
+export const api = createClient<paths>({
+  baseUrl: API_URL,
+  // Look fetch up on each call (not once at start-up), so tests can stub it.
+  fetch: (request) => globalThis.fetch(request),
+})
 
 /** An API error with a message a person can read. */
 export class ApiError extends Error {
