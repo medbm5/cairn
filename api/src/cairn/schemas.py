@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from cairn.domain.profiles import AssetClass, RiskProfile
 
@@ -45,3 +45,32 @@ class QuestionnaireResult(BaseModel):
     score: int
     max_score: int
     profile: ProfileOut
+
+
+# --- Simulation ---
+
+MAX_AMOUNT_CENTS = 100_000_000_00  # 100 million euros
+MAX_MONTHLY_CENTS = 1_000_000_00  # 1 million euros a month
+
+
+class SimulationRequest(BaseModel):
+    initial_cents: int = Field(ge=0, le=MAX_AMOUNT_CENTS)
+    monthly_contribution_cents: int = Field(ge=0, le=MAX_MONTHLY_CENTS)
+    horizon_months: int = Field(ge=12, le=480, description="Between 1 and 40 years.")
+    profile: RiskProfile
+    target_cents: int | None = Field(default=None, ge=0, le=MAX_AMOUNT_CENTS)
+    paths: int = Field(default=5_000, ge=100, le=10_000)
+    seed: int | None = Field(default=None, ge=0, le=2**32 - 1)
+
+
+class SimulationResponse(BaseModel):
+    seed: int
+    paths: int
+    months: list[int]
+    p10: list[int]
+    p25: list[int]
+    p50: list[int]
+    p75: list[int]
+    p90: list[int]
+    contributed: list[int]
+    success_probability: float | None
