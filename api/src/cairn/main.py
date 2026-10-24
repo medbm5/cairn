@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from cairn.config import get_settings
 from cairn.logging import configure_logging
 from cairn.middleware import REQUEST_ID_HEADER, RequestIdMiddleware
-from cairn.routers import health
+from cairn.routers import health, profiles
 
 
 def create_app() -> FastAPI:
@@ -22,6 +22,7 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(RequestIdMiddleware)
     app.include_router(health.router)
+    app.include_router(profiles.router)
     return app
 
 
