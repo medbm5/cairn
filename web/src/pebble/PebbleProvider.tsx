@@ -59,8 +59,8 @@ interface PebbleContextValue {
   waking: boolean
   quiet: boolean
   setQuiet: (quiet: boolean) => void
-  registerAnchor: (id: string, element: HTMLElement | null) => void
-  getAnchor: (id: string) => HTMLElement | undefined
+  registerAnchor: (id: string, element: Element | null) => void
+  getAnchor: (id: string) => Element | undefined
   hasAnchor: (id: string) => boolean
   registerSlot: (id: string, present: boolean) => void
   hasSlot: (id: string) => boolean
@@ -100,7 +100,7 @@ export function PebbleProvider({
   const [statusLine, setStatusLine] = useState<string | null>(null)
   const [waking, setWaking] = useState(false)
   const nextId = useRef(1)
-  const anchors = useRef(new Map<string, HTMLElement>())
+  const anchors = useRef(new Map<string, Element>())
   const slots = useRef(new Set<string>())
   const [, setRegistryVersion] = useState(0)
 
@@ -154,7 +154,7 @@ export function PebbleProvider({
   }, [])
 
   // --- Registries ---
-  const registerAnchor = useCallback((id: string, element: HTMLElement | null) => {
+  const registerAnchor = useCallback((id: string, element: Element | null) => {
     if (element) anchors.current.set(id, element)
     else anchors.current.delete(id)
     setRegistryVersion((v) => v + 1)
@@ -199,7 +199,7 @@ export function PebbleProvider({
 
   // While Pebble moves between anchors, PebbleLayer shows the 'walk' state on top of this one.
   let state: PebbleState = baseState
-  if (target) state = 'point'
+  if (target && baseState === 'idle') state = 'point'
   if (current) {
     const isText = 'text' in current.request
     state = query.isFetching ? 'think' : isText && target ? 'point' : 'explain'
@@ -241,12 +241,9 @@ export function usePebble(): PebbleContextValue {
 }
 
 /** Register an element Pebble can walk to and point at. Unregisters on unmount. */
-export function usePebbleAnchor(id: string): (element: HTMLElement | null) => void {
+export function usePebbleAnchor(id: string): (element: Element | null) => void {
   const { registerAnchor } = usePebble()
-  return useCallback(
-    (element: HTMLElement | null) => registerAnchor(id, element),
-    [id, registerAnchor],
-  )
+  return useCallback((element: Element | null) => registerAnchor(id, element), [id, registerAnchor])
 }
 
 /** Where explanations appear inline when Pebble is quiet. */

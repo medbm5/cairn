@@ -1,4 +1,4 @@
-import { motion, type TargetAndTransition, type Transition, type Variants } from 'framer-motion'
+import { m, type TargetAndTransition, type Transition, type Variants } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { useReducedMotion } from '../lib/motion'
 import { PEBBLE_STATES, type PebbleState } from './states'
@@ -145,12 +145,12 @@ export function PebbleFigure({
       aria-hidden={title ? undefined : true}
       style={{ transform: facing === 'left' ? 'scaleX(-1)' : undefined, overflow: 'visible' }}
     >
-      <motion.g
+      <m.g
         animate={stretch && !reduced ? { scaleY: [1, 1.12, 0.96, 1] } : { scaleY: 1 }}
         transition={{ duration: 0.8 }}
         style={{ transformOrigin: ORIGINS.body }}
       >
-        <motion.g
+        <m.g
           variants={variants.body}
           animate={state}
           style={{ transformOrigin: ORIGINS.body }}
@@ -173,14 +173,14 @@ export function PebbleFigure({
           />
 
           {/* Arms (behind the body) */}
-          <motion.g
+          <m.g
             variants={variants.leftArm}
             animate={state}
             style={{ transformOrigin: ORIGINS.leftArm }}
           >
             <path d="M30 84 C20 88 16 96 18 104" strokeWidth={5} />
-          </motion.g>
-          <motion.g
+          </m.g>
+          <m.g
             variants={variants.rightArm}
             animate={state}
             style={{ transformOrigin: ORIGINS.rightArm }}
@@ -192,7 +192,7 @@ export function PebbleFigure({
               <path d="M-3 20 L0 28 L3 20 Z" style={{ fill: 'var(--paper)' }} />
               <path d="M-1 25 L0 28 L1 25 Z" style={{ fill: 'var(--ink)' }} strokeWidth={1} />
             </g>
-          </motion.g>
+          </m.g>
 
           {/* Body: a rounded, slightly uneven stone */}
           <path
@@ -212,26 +212,22 @@ export function PebbleFigure({
             style={{ fill: 'var(--ink)' }}
             strokeWidth={2}
           />
-          <motion.g
+          <m.g
             variants={variants.eyes}
             animate={state}
             style={{ transformOrigin: ORIGINS.eyes }}
             stroke="none"
           >
-            <motion.g
+            <m.g
               animate={{ scaleY: blinkClosed ? 0.1 : 1 }}
               transition={{ duration: 0.07 }}
               style={{ transformOrigin: ORIGINS.eyes }}
             >
               <circle cx="50" cy="57" r="4" style={{ fill: 'var(--paper)' }} />
               <circle cx="70" cy="57" r="4" style={{ fill: 'var(--paper)' }} />
-            </motion.g>
-          </motion.g>
-          <motion.g
-            variants={variants.mouth}
-            animate={state}
-            style={{ transformOrigin: ORIGINS.mouth }}
-          >
+            </m.g>
+          </m.g>
+          <m.g variants={variants.mouth} animate={state} style={{ transformOrigin: ORIGINS.mouth }}>
             {state === 'cheer' ? (
               <path d="M51 67 C55 74 65 74 69 67" stroke="var(--paper)" strokeWidth={2.4} />
             ) : state === 'worried' ? (
@@ -243,14 +239,14 @@ export function PebbleFigure({
             ) : (
               <path d="M53 70 L67 70" stroke="var(--paper)" strokeWidth={2.4} />
             )}
-          </motion.g>
-        </motion.g>
+          </m.g>
+        </m.g>
 
         {/* Thinking dots above the antenna */}
         {state === 'think' && (
           <g style={{ fill: 'var(--ink)' }} stroke="none">
             {[0, 1, 2].map((i) => (
-              <motion.circle
+              <m.circle
                 key={i}
                 cx={72 + i * 9}
                 cy={2 - i * 5}
@@ -264,7 +260,7 @@ export function PebbleFigure({
 
         {/* Sleeping: "zzz" drawn above */}
         {state === 'sleep' && (
-          <motion.text
+          <m.text
             x="74"
             y="6"
             className="font-hand"
@@ -274,9 +270,9 @@ export function PebbleFigure({
             transition={reduced ? { duration: 0 } : loop(2.4)}
           >
             zzz
-          </motion.text>
+          </m.text>
         )}
-      </motion.g>
+      </m.g>
     </svg>
   )
 }

@@ -34,6 +34,39 @@ export const en = {
   askPebble: 'Ask Pebble',
   nextStep: 'Next',
   stepOf: 'Step {step} of {total}',
+  chartToday: 'Today',
+  chartYear: 'Year {year}',
+  chartSummary:
+    'Projection over {years}. Middle scenario: {p50}. Tough market: {p10}. Great market: {p90}. Target: {target}. Chance of reaching it: {chance}.',
+  heroHeadline: 'See where your savings could take you.',
+  heroIntro:
+    'Pebble sketches thousands of possible futures for your savings. Here is an example: {initial} to start, a goal of {target} in {years}.',
+  monthlySavings: 'Monthly savings',
+  heroChance: 'Chance of reaching {target}',
+  heroNote: 'this is the middle scenario',
+  sectionGoalTitle: 'You set a goal',
+  sectionGoalBody:
+    'A home, a safety net, retirement: give it a name, an amount and a date. Everything else is worked out from there.',
+  exampleGoalName: 'A flat in Lyon',
+  goalBy: 'by {date}',
+  perMonth: '{amount} a month',
+  sectionGlideTitle: 'Your portfolio gets safer as the date gets closer',
+  sectionGlideBody:
+    'Far from the goal, more of your money is in shares, which grow more over time. Each year closer, a little moves to safer investments.',
+  glideShares: 'Shares',
+  glideSafer: 'Bonds and money market',
+  glideSummary: 'Shares go from {start} today to {end} at the goal date.',
+  sectionLedgerTitle: 'Every euro is accounted for',
+  sectionLedgerBody:
+    'Each deposit is written twice: where it leaves and where it arrives. The two sides always add up to zero, so nothing can go missing.',
+  ledgerDeposit: 'Deposit',
+  ledgerBalanced: 'Balanced: {total}',
+  ctaTitle: 'Ready to sketch your own?',
+  ctaPlan: 'Plan my first goal',
+  glideCalled: 'This is called a',
+  glidePathWord: 'glide path',
+  ledgerCalled: 'This is called',
+  doubleEntryWord: 'double-entry bookkeeping',
 } as const
 
 export type Strings = { [K in keyof typeof en]: string }
@@ -73,4 +106,37 @@ export const fr: Strings = {
   askPebble: 'Demander à Pebble',
   nextStep: 'Suivant',
   stepOf: 'Étape {step} sur {total}',
+  chartToday: "Aujourd'hui",
+  chartYear: 'An {year}',
+  chartSummary:
+    "Projection sur {years}. Scénario du milieu : {p50}. Marché difficile : {p10}. Très bon marché : {p90}. Objectif : {target}. Chance de l'atteindre : {chance}.",
+  heroHeadline: 'Voyez où votre épargne pourrait vous mener.',
+  heroIntro:
+    "Pebble dessine des milliers d'avenirs possibles pour votre épargne. Un exemple : {initial} au départ, un objectif de {target} dans {years}.",
+  monthlySavings: 'Épargne mensuelle',
+  heroChance: "Chance d'atteindre {target}",
+  heroNote: 'voici le scénario du milieu',
+  sectionGoalTitle: 'Vous fixez un objectif',
+  sectionGoalBody:
+    'Un logement, une épargne de précaution, la retraite : donnez-lui un nom, un montant et une date. Tout le reste en découle.',
+  exampleGoalName: 'Un appartement à Lyon',
+  goalBy: 'pour {date}',
+  perMonth: '{amount} par mois',
+  sectionGlideTitle: "Votre portefeuille se sécurise à l'approche de l'échéance",
+  sectionGlideBody:
+    "Loin de l'objectif, une plus grande part est en actions, qui progressent davantage dans le temps. Chaque année, un peu passe vers des placements plus sûrs.",
+  glideShares: 'Actions',
+  glideSafer: 'Obligations et monétaire',
+  glideSummary: "Les actions passent de {start} aujourd'hui à {end} à l'échéance.",
+  sectionLedgerTitle: 'Chaque euro est suivi',
+  sectionLedgerBody:
+    "Chaque versement est écrit deux fois : d'où il part et où il arrive. Les deux côtés font toujours zéro, donc rien ne peut se perdre.",
+  ledgerDeposit: 'Versement',
+  ledgerBalanced: 'Équilibré : {total}',
+  ctaTitle: 'Prêt à dessiner le vôtre ?',
+  ctaPlan: 'Planifier mon premier objectif',
+  glideCalled: 'On appelle cela une',
+  glidePathWord: 'trajectoire de sécurisation',
+  ledgerCalled: "C'est la comptabilité en",
+  doubleEntryWord: 'partie double',
 }

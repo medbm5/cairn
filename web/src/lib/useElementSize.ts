@@ -16,7 +16,10 @@ export function useElementSize<T extends Element>(): [(node: T | null) => void, 
     observer.current = null
     if (!node || typeof ResizeObserver === 'undefined') return
     observer.current = new ResizeObserver(([entry]) => {
-      const { width, height } = entry.contentRect
+      // Border-box size: drawings sit on the element's edges, padding included.
+      const box = entry.borderBoxSize?.[0]
+      const width = box ? box.inlineSize : entry.contentRect.width
+      const height = box ? box.blockSize : entry.contentRect.height
       setSize((prev) =>
         Math.round(prev.width) === Math.round(width) &&
         Math.round(prev.height) === Math.round(height)

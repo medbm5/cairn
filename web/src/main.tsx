@@ -4,7 +4,7 @@ import { App } from './app/App'
 import { initSentry } from './lib/sentry'
 import './styles/index.css'
 
-initSentry()
+void initSentry()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

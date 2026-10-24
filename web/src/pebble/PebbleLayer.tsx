@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { Sheet } from '../components/Sheet'
 import { useLanguage } from '../lib/i18n'
@@ -41,19 +41,25 @@ function homePlacement(): Placement {
   }
 }
 
-/** Beside the target element, on whichever side has room; facing it. */
-function placementNear(element: HTMLElement): Placement {
+/** Beside the target element, on whichever side has room; facing it. Inside wide ones. */
+function placementNear(element: Element): Placement {
   const rect = element.getBoundingClientRect()
   const vw = window.innerWidth
   const vh = window.innerHeight
-  const y = Math.min(Math.max(rect.top + rect.height / 2 - FIGURE_H / 2, 8), vh - FIGURE_H - 8)
+  const clampY = (value: number) => Math.min(Math.max(value, 8), vh - FIGURE_H - 8)
+  // Wide elements (charts, panels) fill their row: stand in their bottom-right corner, where
+  // a rising chart leaves empty paper, rather than on top of the neighbouring text.
+  if (rect.width > 360) {
+    return { x: rect.right - FIGURE_W - 12, y: clampY(rect.bottom - FIGURE_H - 44), facing: 'left' }
+  }
+  const y = clampY(rect.top + rect.height / 2 - FIGURE_H / 2)
   if (rect.right + FIGURE_W + 12 < vw) return { x: rect.right + 8, y, facing: 'left' }
   if (rect.left - FIGURE_W - 12 > 0) return { x: rect.left - FIGURE_W - 8, y, facing: 'right' }
   return { x: vw - FIGURE_W - MARGIN, y, facing: 'left' }
 }
 
 /** Follow the target anchor (or go home), recomputing on scroll and resize. */
-function usePlacement(target: string | null, getAnchor: (id: string) => HTMLElement | undefined) {
+function usePlacement(target: string | null, getAnchor: (id: string) => Element | undefined) {
   const reduced = useReducedMotion()
   const [placement, setPlacement] = useState<Placement>(() =>
     typeof window === 'undefined' ? { x: 0, y: 0, facing: 'left' } : homePlacement(),
@@ -152,7 +158,7 @@ export function PebbleLayer() {
 
   return (
     <div className="pointer-events-none fixed inset-0 z-40" aria-live="polite">
-      <motion.div
+      <m.div
         className="absolute left-0 top-0"
         initial={false}
         animate={{ x: placement.x, y: placement.y }}
@@ -168,7 +174,7 @@ export function PebbleLayer() {
           className="h-full w-full drop-shadow-sm"
           title={t('pebbleAlt')}
         />
-      </motion.div>
+      </m.div>
       {showBubble && (
         <div
           ref={bubbleRef}

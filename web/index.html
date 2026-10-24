@@ -11,10 +11,22 @@
     <title>Cairn</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Fonts load without blocking the first paint; system fallbacks show until they arrive. -->
     <link
-      rel="stylesheet"
+      rel="preload"
+      as="style"
       href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap"
+      onload="
+        this.onload = null
+        this.rel = 'stylesheet'
+      "
     />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap"
+      />
+    </noscript>
     <script>
       // Apply the saved theme before first paint, to avoid a flash of the wrong one.
       try {
