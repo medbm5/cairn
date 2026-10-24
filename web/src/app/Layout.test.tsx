@@ -23,7 +23,7 @@ test('shows navigation, the disclaimer and switches language', async () => {
 
 test('theme switch toggles the blueprint theme', async () => {
   renderWithProviders(<Layout />)
-  const toggle = screen.getByRole('switch')
+  const toggle = screen.getByRole('switch', { name: /theme/ })
   const before = document.documentElement.dataset.theme
   await userEvent.click(toggle)
   expect(document.documentElement.dataset.theme).not.toBe(before)

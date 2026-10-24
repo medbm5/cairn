@@ -3,6 +3,7 @@ import { RouterProvider } from 'react-router-dom'
 import { ToastProvider } from '../components/Toast'
 import { LanguageProvider } from '../lib/i18n'
 import { ThemeProvider } from '../lib/theme'
+import { PebbleProvider } from '../pebble/PebbleProvider'
 import { router } from './router'
 
 const queryClient = new QueryClient({
@@ -16,9 +17,11 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <LanguageProvider>
-          <ToastProvider>
-            <RouterProvider router={router} />
-          </ToastProvider>
+          <PebbleProvider>
+            <ToastProvider>
+              <RouterProvider router={router} />
+            </ToastProvider>
+          </PebbleProvider>
         </LanguageProvider>
       </ThemeProvider>
     </QueryClientProvider>

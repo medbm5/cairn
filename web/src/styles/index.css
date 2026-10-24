@@ -115,6 +115,14 @@ h3 {
   opacity: 1;
 }
 
+.term-wrap .rough-annotation path {
+  stroke-dasharray: 1.5 4;
+}
+
+.term-wrap button {
+  cursor: help;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

@@ -3,6 +3,8 @@ import { LanguageToggle } from '../components/LanguageToggle'
 import { CairnGlyph } from '../components/CairnGlyph'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { useLanguage } from '../lib/i18n'
+import { PebbleLayer } from '../pebble/PebbleLayer'
+import { QuietToggle } from '../pebble/QuietToggle'
 
 export function Layout() {
   const { t } = useLanguage()
@@ -50,6 +52,7 @@ export function Layout() {
           </ul>
         </nav>
         <div className="ml-auto flex items-center gap-1">
+          <QuietToggle />
           <LanguageToggle />
           <ThemeToggle />
         </div>
@@ -62,6 +65,7 @@ export function Layout() {
       <footer className="mx-auto w-full max-w-6xl px-4 py-6 text-sm text-graphite sm:px-8">
         {t('footer')}
       </footer>
+      <PebbleLayer />
       <ScrollRestoration />
     </div>
   )
