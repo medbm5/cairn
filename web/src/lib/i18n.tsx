@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
 import { readStorage, writeStorage } from './storage'
 import { en, fr, type Strings } from './strings'
 
@@ -19,7 +27,8 @@ const LanguageContext = createContext<LanguageContextValue | null>(null)
 function initialLanguage(): Language {
   const saved = readStorage(STORAGE_KEY)
   if (saved === 'en' || saved === 'fr') return saved
-  return typeof navigator !== 'undefined' && navigator.language.startsWith('fr') ? 'fr' : 'en'
+  // French by default; a choice made with the FR / EN toggle is remembered.
+  return 'fr'
 }
 
 export function translate(
@@ -44,8 +53,12 @@ export function LanguageProvider({
   const setLanguage = useCallback((next: Language) => {
     setLanguageState(next)
     writeStorage(STORAGE_KEY, next)
-    document.documentElement.lang = next
   }, [])
+
+  // Keep <html lang> right for screen readers and hyphenation, including a saved choice.
+  useEffect(() => {
+    document.documentElement.lang = language
+  }, [language])
 
   const value = useMemo<LanguageContextValue>(
     () => ({
