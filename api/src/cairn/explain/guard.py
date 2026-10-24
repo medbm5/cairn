@@ -3,6 +3,7 @@
 A number is accepted if it matches a value derived from the facts, allowing for the formatting a
 person would use: euros instead of cents, thousands ("12k") or millions, percentages instead of
 fractions (and their complement, "1 in 4 falls short"), years instead of months, and rounding.
+Signs are not read: a loss of -1234 cents may be written "a fall of 12.34 euros".
 """
 
 import re
@@ -51,12 +52,14 @@ def _derived(name: str, value: object) -> Iterable[float]:
     if isinstance(value, Scenario):
         yield SCENARIO_YEARS[value]
     elif isinstance(value, dict):
+        # Dicts hold fractions per asset class, or cents when the field name says so.
+        item_name = name if name.endswith("_cents") else "fraction"
         for item in value.values():
-            yield from _derived("fraction", item)
+            yield from _derived(item_name, item)
     elif isinstance(value, list):
         return
     elif isinstance(value, int) and name.endswith("_cents"):
-        euros = value / 100
+        euros = abs(value) / 100
         yield from (euros, euros / 1_000, euros / 1_000_000)
     elif isinstance(value, int) and "months" in name:
         yield from (value, value / 12)

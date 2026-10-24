@@ -27,6 +27,10 @@ export const routes = [
           Component: (await import('../routes/GoalDetailPage')).GoalDetailPage,
         }),
       },
+      {
+        path: '/support',
+        lazy: async () => ({ Component: (await import('../routes/SupportPage')).SupportPage }),
+      },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

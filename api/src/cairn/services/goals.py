@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from cairn.domain.dates import months_between
@@ -37,7 +37,9 @@ def create_goal(session: Session, data: GoalCreate) -> Goal:
 
 
 def list_goals(session: Session) -> list[Goal]:
-    return list(session.scalars(select(Goal).order_by(Goal.id)))
+    """The demo user's goals. Other users are support-view clients and stay out of this list."""
+    first_user = select(func.min(User.id)).scalar_subquery()
+    return list(session.scalars(select(Goal).where(Goal.user_id == first_user).order_by(Goal.id)))
 
 
 def get_goal(session: Session, goal_id: int) -> Goal:

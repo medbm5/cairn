@@ -5,7 +5,7 @@ Every entry's lines sum to zero, so the sum of all account balances is always ze
 the person's bank account shows as a negative `external_bank` balance.
 """
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 
@@ -147,7 +147,11 @@ def holdings(session: Session, goal: Goal) -> dict[AssetClass, int]:
 
 
 def charge_fee(
-    session: Session, goal: Goal, amount_cents: int, idempotency_key: str
+    session: Session,
+    goal: Goal,
+    amount_cents: int,
+    idempotency_key: str,
+    created_at: datetime | None = None,
 ) -> tuple[JournalEntry, bool]:
     """Take a fee from the holdings, in proportion to their current values."""
     current = holdings(session, goal)
@@ -167,21 +171,29 @@ def charge_fee(
         idempotency_key=f"fee:{goal.id}:{idempotency_key}",
         description=f"Fee of {amount_cents} cents",
         lines=lines,
+        created_at=created_at,
     )
 
 
 def mark_to_market(
-    session: Session, goal: Goal, year: int, month: int, created_at: datetime | None = None
+    session: Session,
+    goal: Goal,
+    year: int,
+    month: int,
+    created_at: datetime | None = None,
+    returns: Mapping[AssetClass, float] | None = None,
 ) -> JournalEntry | None:
     """Apply one month of seeded market returns to the goal's holdings (once per month).
 
-    Returns the entry, or None when there is nothing to revalue.
+    `returns` replaces the seeded returns, so the demo seed can stage a market shock. Returns the
+    entry, or None when there is nothing to revalue.
     """
     key = f"mtm:{goal.id}:{year:04d}-{month:02d}"
     existing = find_entry(session, key)
     if existing is not None:
         return existing
-    returns = monthly_asset_returns(seed=goal.id, month=year * 12 + month)
+    if returns is None:
+        returns = monthly_asset_returns(seed=goal.id, month=year * 12 + month)
     moves = {a: round(cents * returns[a]) for a, cents in holdings(session, goal).items()}
     lines = [(holding(a), cents) for a, cents in moves.items()]
     lines.append((MARKET, -sum(moves.values())))

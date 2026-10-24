@@ -864,6 +864,266 @@
           }
         }
       }
+    },
+    "/support/clients": {
+      "get": {
+        "tags": [
+          "support"
+        ],
+        "summary": "Search Clients",
+        "operationId": "search_clients_support_clients_get",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 100,
+              "default": "",
+              "title": "Query"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/support/clients/{client_id}": {
+      "get": {
+        "tags": [
+          "support"
+        ],
+        "summary": "Get Client",
+        "operationId": "get_client_support_clients__client_id__get",
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Client Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientSummaryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/support/clients/{client_id}/timeline": {
+      "get": {
+        "tags": [
+          "support"
+        ],
+        "summary": "Get Timeline",
+        "operationId": "get_timeline_support_clients__client_id__timeline_get",
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Client Id"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TimelineEventOut"
+                  },
+                  "title": "Response Get Timeline Support Clients  Client Id  Timeline Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/support/clients/{client_id}/ask": {
+      "post": {
+        "tags": [
+          "support"
+        ],
+        "summary": "Ask",
+        "operationId": "ask_support_clients__client_id__ask_post",
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Client Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupportAskRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportAnswerOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/debug/sentry": {
+      "get": {
+        "tags": [
+          "debug"
+        ],
+        "summary": "Trigger Error",
+        "operationId": "trigger_error_debug_sentry_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -927,6 +1187,205 @@
           "weights"
         ],
         "title": "BalanceOut"
+      },
+      "BreakdownOut": {
+        "properties": {
+          "month": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "title": "Month"
+          },
+          "start_balance_cents": {
+            "type": "integer",
+            "title": "Start Balance Cents"
+          },
+          "end_balance_cents": {
+            "type": "integer",
+            "title": "End Balance Cents"
+          },
+          "change_cents": {
+            "type": "integer",
+            "title": "Change Cents"
+          },
+          "market_effect_cents": {
+            "type": "integer",
+            "title": "Market Effect Cents"
+          },
+          "deposits_cents": {
+            "type": "integer",
+            "title": "Deposits Cents"
+          },
+          "fees_cents": {
+            "type": "integer",
+            "title": "Fees Cents"
+          },
+          "market_by_asset_cents": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/AssetClass"
+            },
+            "type": "object",
+            "title": "Market By Asset Cents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "month",
+          "start_balance_cents",
+          "end_balance_cents",
+          "change_cents",
+          "market_effect_cents",
+          "deposits_cents",
+          "fees_cents",
+          "market_by_asset_cents"
+        ],
+        "title": "BreakdownOut"
+      },
+      "ClientListItem": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "goal_count": {
+            "type": "integer",
+            "title": "Goal Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "email",
+          "goal_count"
+        ],
+        "title": "ClientListItem"
+      },
+      "ClientPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ClientListItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "ClientPage"
+      },
+      "ClientSummaryOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RiskProfile"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Profile of the goal holding the most money."
+          },
+          "total_balance_cents": {
+            "type": "integer",
+            "title": "Total Balance Cents"
+          },
+          "total_contributed_cents": {
+            "type": "integer",
+            "title": "Total Contributed Cents"
+          },
+          "total_fees_cents": {
+            "type": "integer",
+            "title": "Total Fees Cents"
+          },
+          "last_activity": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Activity"
+          },
+          "goals": {
+            "items": {
+              "$ref": "#/components/schemas/SupportGoalOut"
+            },
+            "type": "array",
+            "title": "Goals"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "email",
+          "profile",
+          "total_balance_cents",
+          "total_contributed_cents",
+          "total_fees_cents",
+          "last_activity",
+          "goals"
+        ],
+        "title": "ClientSummaryOut"
       },
       "DepositCreate": {
         "properties": {
@@ -1224,6 +1683,24 @@
           "simulation"
         ],
         "title": "GoalProjection"
+      },
+      "GoalRef": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "GoalRef"
       },
       "GoalType": {
         "type": "string",
@@ -1918,6 +2395,176 @@
         ],
         "title": "StressTestOut"
       },
+      "SupportAnswerOut": {
+        "properties": {
+          "answer": {
+            "$ref": "#/components/schemas/Explanation"
+          },
+          "focus": {
+            "type": "string",
+            "enum": [
+              "month_change",
+              "last_rebalance"
+            ],
+            "title": "Focus"
+          },
+          "breakdown": {
+            "$ref": "#/components/schemas/BreakdownOut"
+          },
+          "event_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Event Ids",
+            "description": "Timeline events the answer is about."
+          }
+        },
+        "type": "object",
+        "required": [
+          "answer",
+          "focus",
+          "breakdown",
+          "event_ids"
+        ],
+        "title": "SupportAnswerOut"
+      },
+      "SupportAskRequest": {
+        "properties": {
+          "question": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Question"
+          },
+          "month": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Month",
+            "description": "YYYY-MM; inferred when omitted."
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "fr"
+            ],
+            "title": "Language",
+            "default": "en"
+          }
+        },
+        "type": "object",
+        "required": [
+          "question"
+        ],
+        "title": "SupportAskRequest"
+      },
+      "SupportGoalOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "$ref": "#/components/schemas/GoalType"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/RiskProfile"
+          },
+          "target_cents": {
+            "type": "integer",
+            "title": "Target Cents"
+          },
+          "target_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Target Date"
+          },
+          "balance_cents": {
+            "type": "integer",
+            "title": "Balance Cents"
+          },
+          "contributed_cents": {
+            "type": "integer",
+            "title": "Contributed Cents"
+          },
+          "fees_cents": {
+            "type": "integer",
+            "title": "Fees Cents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type",
+          "profile",
+          "target_cents",
+          "target_date",
+          "balance_cents",
+          "contributed_cents",
+          "fees_cents"
+        ],
+        "title": "SupportGoalOut"
+      },
+      "TimelineEventOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "The journal entry's id."
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "description": "deposit, fee, market or rebalance."
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Date"
+          },
+          "amount_cents": {
+            "type": "integer",
+            "title": "Amount Cents",
+            "description": "Change of the goal's value; for a rebalance, the money moved between investments (the value does not change)."
+          },
+          "goal": {
+            "$ref": "#/components/schemas/GoalRef"
+          },
+          "goal_value_after_cents": {
+            "type": "integer",
+            "title": "Goal Value After Cents"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Payload"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "date",
+          "amount_cents",
+          "goal",
+          "goal_value_after_cents",
+          "payload"
+        ],
+        "title": "TimelineEventOut"
+      },
       "Topic": {
         "type": "string",
         "enum": [
@@ -1927,6 +2574,7 @@
           "rebalance",
           "stress_test",
           "ledger_entry",
+          "support_answer",
           "term"
         ],
         "title": "Topic"

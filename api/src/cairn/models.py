@@ -11,12 +11,14 @@ __all__ = ["Account", "Base", "Goal", "JournalEntry", "JournalLine", "User"]
 
 
 class User(Base):
-    """The single demo user. The API is demo-scoped and has no authentication (ADR 0004)."""
+    """A demo client. The first user is the visitor's demo user; the others are invented clients
+    for the support view. The API is demo-scoped and has no authentication (ADR 0004)."""
 
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100))
+    email: Mapped[str | None] = mapped_column(String(255), unique=True, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     goals: Mapped[list["Goal"]] = relationship(back_populates="user")

@@ -21,6 +21,7 @@ _Demo GIF coming soon._
 - **Travel through time.** Scrub through the years and see your allocation shift from growth to safety as the goal approaches.
 - **Replay a crisis.** See how your portfolio would have behaved in 2008, 2020 and 2022, with and without rebalancing.
 - **Follow every euro.** Each deposit and rebalance is recorded in a double-entry ledger that always balances.
+- **Answer support questions.** An internal support view shows a client's account as one timeline; ask "Why did the balance go down in March?" and Pebble splits the change into market effect, deposits and fees, to the cent.
 
 ## How it works
 
@@ -169,6 +170,7 @@ The project was built in small, reviewable slices, one commit each. Full specifi
 | 17 | Demo data, Metabase, Kubernetes | `chore: add demo seed data, Metabase setup and Kubernetes manifests` |
 | 18 | Deployment | `chore(deploy): add Render blueprint and Vercel configuration` |
 | 19 | Documentation | `docs: add architecture, decision records and AI usage notes` |
+| 21 | Support view | `feat(support): add support view with client timeline and plain-language answers` |
 
 ## Built with AI
 

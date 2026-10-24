@@ -62,8 +62,11 @@ export function Layout() {
         <Outlet />
       </main>
 
-      <footer className="mx-auto w-full max-w-6xl px-4 py-6 text-sm text-graphite sm:px-8">
-        {t('footer')}
+      <footer className="mx-auto flex w-full max-w-6xl flex-wrap items-baseline justify-between gap-x-6 gap-y-2 px-4 py-6 text-sm text-graphite sm:px-8">
+        <span>{t('footer')}</span>
+        <NavLink to="/support" className="underline decoration-dotted underline-offset-4">
+          {t('supportLink')}
+        </NavLink>
       </footer>
       <PebbleLayer />
       <ScrollRestoration />

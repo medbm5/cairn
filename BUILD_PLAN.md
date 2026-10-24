@@ -366,6 +366,29 @@ The goal of this layer is to translate finance into everyday language. It is wha
 
 **Commit:** `docs: add architecture, decision records and AI usage notes`
 
+### Slice 21 — Support view
+
+Purpose: an internal page for a customer-support agent to understand a client's account quickly and answer "what happened to my money?" questions in plain language.
+
+**Backend**
+- Seed: extend `api/scripts/seed.py` with 5 more demo clients (varied profiles, goals, deposits, rebalances, one client with a large market drop in a given month). Keep it idempotent.
+- Endpoints (prefix `/support`, demo-scoped, no auth, documented in ADR 0004):
+  - `GET /support/clients?query=`: search by name or email, paginated.
+  - `GET /support/clients/{id}`: summary (goals, profile, total balance, total contributed, last activity).
+  - `GET /support/clients/{id}/timeline?from=&to=`: a single chronological list merging ledger entries (deposits, fees, rebalances) and monthly market moves (value change per goal from `mark_to_market`). Each event has type, date, amount_cents, goal, and a short machine-readable payload.
+  - `POST /support/clients/{id}/ask`: body `{ question, month? }`. Builds facts **only** from the timeline (e.g. balance at start and end of month, deposits, fees, rebalances, market effect per asset class), then calls the explainability layer with a new topic `support_answer`. The answer must break the balance change into its parts (market effect, deposits, fees) and the parts must sum to the total change, computed in code before calling the model. Number guard and template fallback apply as for every topic.
+- Tests: timeline is ordered and complete versus the ledger; the decomposition sums exactly to the balance change in cents; fallback answer works without an OpenAI key; unknown client returns 404.
+
+**Frontend**
+- Route `/support`, linked discreetly in the footer as "Support view (internal demo)".
+- Layout: search on the left, client summary and timeline in the centre (hand-drawn timeline line, events as small sketched markers, figures in Atkinson Hyperlegible), a question panel on the right.
+- The question panel offers suggested questions ("Why did the balance go down in March?", "When was the last rebalance?") and a free-text box. Pebble answers in a speech bubble and the matching timeline events get highlighted with rough-notation.
+- Clicking a timeline event makes Pebble explain that single event.
+- Empty state: "Search for a client to see their account history."
+- Tests: search renders results; asking a question highlights the events referenced in the answer.
+
+**Commit:** `feat(support): add support view with client timeline and plain-language answers`
+
 ---
 
 ## Definition of done

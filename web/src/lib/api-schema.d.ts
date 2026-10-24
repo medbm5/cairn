@@ -296,6 +296,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/support/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Clients */
+        get: operations["search_clients_support_clients_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/support/clients/{client_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Client */
+        get: operations["get_client_support_clients__client_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/support/clients/{client_id}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Timeline */
+        get: operations["get_timeline_support_clients__client_id__timeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/support/clients/{client_id}/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask */
+        post: operations["ask_support_clients__client_id__ask_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/debug/sentry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Trigger Error */
+        get: operations["trigger_error_debug_sentry_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -323,6 +408,70 @@ export interface components {
             weights: {
                 [key: string]: number;
             };
+        };
+        /** BreakdownOut */
+        BreakdownOut: {
+            /** Month */
+            month: string;
+            /** Start Balance Cents */
+            start_balance_cents: number;
+            /** End Balance Cents */
+            end_balance_cents: number;
+            /** Change Cents */
+            change_cents: number;
+            /** Market Effect Cents */
+            market_effect_cents: number;
+            /** Deposits Cents */
+            deposits_cents: number;
+            /** Fees Cents */
+            fees_cents: number;
+            /** Market By Asset Cents */
+            market_by_asset_cents: {
+                [key: string]: number;
+            };
+        };
+        /** ClientListItem */
+        ClientListItem: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string | null;
+            /** Goal Count */
+            goal_count: number;
+        };
+        /** ClientPage */
+        ClientPage: {
+            /** Items */
+            items: components["schemas"]["ClientListItem"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /** ClientSummaryOut */
+        ClientSummaryOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string | null;
+            /** @description Profile of the goal holding the most money. */
+            profile: components["schemas"]["RiskProfile"] | null;
+            /** Total Balance Cents */
+            total_balance_cents: number;
+            /** Total Contributed Cents */
+            total_contributed_cents: number;
+            /** Total Fees Cents */
+            total_fees_cents: number;
+            /** Last Activity */
+            last_activity: string | null;
+            /** Goals */
+            goals: components["schemas"]["SupportGoalOut"][];
         };
         /** DepositCreate */
         DepositCreate: {
@@ -438,6 +587,13 @@ export interface components {
             /** Target Cents */
             target_cents: number;
             simulation: components["schemas"]["SimulationResponse"];
+        };
+        /** GoalRef */
+        GoalRef: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
         };
         /**
          * GoalType
@@ -676,11 +832,94 @@ export interface components {
             without_rebalancing: components["schemas"]["ReplayOut"];
             with_rebalancing: components["schemas"]["ReplayOut"];
         };
+        /** SupportAnswerOut */
+        SupportAnswerOut: {
+            answer: components["schemas"]["Explanation"];
+            /**
+             * Focus
+             * @enum {string}
+             */
+            focus: "month_change" | "last_rebalance";
+            breakdown: components["schemas"]["BreakdownOut"];
+            /**
+             * Event Ids
+             * @description Timeline events the answer is about.
+             */
+            event_ids: number[];
+        };
+        /** SupportAskRequest */
+        SupportAskRequest: {
+            /** Question */
+            question: string;
+            /**
+             * Month
+             * @description YYYY-MM; inferred when omitted.
+             */
+            month?: string | null;
+            /**
+             * Language
+             * @default en
+             * @enum {string}
+             */
+            language: "en" | "fr";
+        };
+        /** SupportGoalOut */
+        SupportGoalOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            type: components["schemas"]["GoalType"];
+            profile: components["schemas"]["RiskProfile"];
+            /** Target Cents */
+            target_cents: number;
+            /**
+             * Target Date
+             * Format: date
+             */
+            target_date: string;
+            /** Balance Cents */
+            balance_cents: number;
+            /** Contributed Cents */
+            contributed_cents: number;
+            /** Fees Cents */
+            fees_cents: number;
+        };
+        /** TimelineEventOut */
+        TimelineEventOut: {
+            /**
+             * Id
+             * @description The journal entry's id.
+             */
+            id: number;
+            /**
+             * Type
+             * @description deposit, fee, market or rebalance.
+             */
+            type: string;
+            /**
+             * Date
+             * Format: date-time
+             */
+            date: string;
+            /**
+             * Amount Cents
+             * @description Change of the goal's value; for a rebalance, the money moved between investments (the value does not change).
+             */
+            amount_cents: number;
+            goal: components["schemas"]["GoalRef"];
+            /** Goal Value After Cents */
+            goal_value_after_cents: number;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+        };
         /**
          * Topic
          * @enum {string}
          */
-        Topic: "projection" | "allocation" | "glide_path" | "rebalance" | "stress_test" | "ledger_entry" | "term";
+        Topic: "projection" | "allocation" | "glide_path" | "rebalance" | "stress_test" | "ledger_entry" | "support_answer" | "term";
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -1300,6 +1539,159 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_clients_support_clients_get: {
+        parameters: {
+            query?: {
+                query?: string;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_client_support_clients__client_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientSummaryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_timeline_support_clients__client_id__timeline_get: {
+        parameters: {
+            query?: {
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: never;
+            path: {
+                client_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineEventOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ask_support_clients__client_id__ask_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupportAskRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportAnswerOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    trigger_error_debug_sentry_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };

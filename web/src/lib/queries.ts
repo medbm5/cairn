@@ -167,3 +167,57 @@ export function useStressTest(goalId: number) {
 export async function fetchExplanation(request: ExplainRequest): Promise<Explanation> {
   return unwrap(await api.POST('/explain', { body: request }))
 }
+
+// --- Support view ---
+
+export type SupportClientPage = Schemas['ClientPage']
+export type SupportClient = Schemas['ClientSummaryOut']
+export type TimelineEvent = Schemas['TimelineEventOut']
+export type SupportAnswer = Schemas['SupportAnswerOut']
+
+export function useSupportClients(query: string, page: number) {
+  return useQuery({
+    queryKey: ['support', 'clients', query, page],
+    queryFn: async () =>
+      unwrap(await api.GET('/support/clients', { params: { query: { query, page } } })),
+    placeholderData: keepPreviousData,
+  })
+}
+
+export function useSupportClient(clientId: number | null) {
+  return useQuery({
+    queryKey: ['support', 'client', clientId],
+    queryFn: async () =>
+      unwrap(
+        await api.GET('/support/clients/{client_id}', {
+          params: { path: { client_id: clientId! } },
+        }),
+      ),
+    enabled: clientId !== null,
+  })
+}
+
+export function useSupportTimeline(clientId: number | null) {
+  return useQuery({
+    queryKey: ['support', 'timeline', clientId],
+    queryFn: async () =>
+      unwrap(
+        await api.GET('/support/clients/{client_id}/timeline', {
+          params: { path: { client_id: clientId! } },
+        }),
+      ),
+    enabled: clientId !== null,
+  })
+}
+
+export function useAskSupport(clientId: number | null) {
+  return useMutation({
+    mutationFn: async (body: { question: string; month?: string; language: Language }) =>
+      unwrap(
+        await api.POST('/support/clients/{client_id}/ask', {
+          params: { path: { client_id: clientId! } },
+          body,
+        }),
+      ),
+  })
+}

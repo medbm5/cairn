@@ -18,6 +18,7 @@ from cairn.domain.profiles import AssetClass, RiskProfile
 from cairn.domain.stress import Scenario
 from cairn.explain.facts import FACT_MODELS, FactsModel, Topic
 from cairn.explain.glossary import GLOSSARY
+from cairn.explain.service import Explanation
 
 Language = Literal["en", "fr"]
 
@@ -272,3 +273,89 @@ class ExplainRequest(BaseModel):
         if self.topic == Topic.TERM or self.facts is None:
             return None
         return FACT_MODELS[self.topic].model_validate(self.facts)
+
+
+# --- Support view ---
+
+
+class ClientListItem(BaseModel):
+    id: int
+    name: str
+    email: str | None
+    goal_count: int
+
+
+class ClientPage(BaseModel):
+    items: list[ClientListItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class SupportGoalOut(BaseModel):
+    id: int
+    name: str
+    type: GoalType
+    profile: RiskProfile
+    target_cents: int
+    target_date: date
+    balance_cents: int
+    contributed_cents: int
+    fees_cents: int
+
+
+class ClientSummaryOut(BaseModel):
+    id: int
+    name: str
+    email: str | None
+    profile: RiskProfile | None = Field(description="Profile of the goal holding the most money.")
+    total_balance_cents: int
+    total_contributed_cents: int
+    total_fees_cents: int
+    last_activity: datetime | None
+    goals: list[SupportGoalOut]
+
+
+class GoalRef(BaseModel):
+    id: int
+    name: str
+
+
+class TimelineEventOut(BaseModel):
+    id: int = Field(description="The journal entry's id.")
+    type: str = Field(description="deposit, fee, market or rebalance.")
+    date: datetime
+    amount_cents: int = Field(
+        description="Change of the goal's value; for a rebalance, the money moved between "
+        "investments (the value does not change)."
+    )
+    goal: GoalRef
+    goal_value_after_cents: int
+    payload: dict[str, Any]
+
+
+MonthKey = Annotated[str, StringConstraints(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")]
+
+
+class SupportAskRequest(BaseModel):
+    question: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
+    month: MonthKey | None = Field(default=None, description="YYYY-MM; inferred when omitted.")
+    language: Language = "en"
+
+
+class BreakdownOut(BaseModel):
+    month: MonthKey
+    start_balance_cents: int
+    end_balance_cents: int
+    change_cents: int
+    market_effect_cents: int
+    deposits_cents: int
+    fees_cents: int
+    market_by_asset_cents: dict[AssetClass, int]
+
+
+class SupportAnswerOut(BaseModel):
+    answer: Explanation
+    focus: Literal["month_change", "last_rebalance"]
+    breakdown: BreakdownOut
+    event_ids: list[int] = Field(description="Timeline events the answer is about.")

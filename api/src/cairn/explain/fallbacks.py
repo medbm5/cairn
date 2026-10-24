@@ -17,6 +17,7 @@ from cairn.explain.facts import (
     ProjectionFacts,
     RebalanceFacts,
     StressTestFacts,
+    SupportAnswerFacts,
     Topic,
 )
 from cairn.explain.glossary import GLOSSARY, Language
@@ -268,6 +269,110 @@ def _ledger_entry(f: LedgerEntryFacts, level: Level, lang: Language) -> Text:
     return Text(title, body, None, ["ledger", "double_entry"])
 
 
+MONTH_NAMES: dict[Language, tuple[str, ...]] = {
+    "en": (
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ),
+    "fr": (
+        "janvier",
+        "février",
+        "mars",
+        "avril",
+        "mai",
+        "juin",
+        "juillet",
+        "août",
+        "septembre",
+        "octobre",
+        "novembre",
+        "décembre",
+    ),
+}
+
+
+def exact_money(cents: int, language: Language) -> str:
+    """Euros and cents, signed: support answers must add up to the cent."""
+    sign = "-" if cents < 0 else ""
+    euros = f"{abs(cents) / 100:,.2f}"
+    if language == "fr":
+        euros = euros.replace(",", " ").replace(".", ",")
+        return f"{sign}{euros} €"
+    return f"{sign}€{euros}"
+
+
+def _support_answer(f: SupportAnswerFacts, level: Level, lang: Language) -> Text:
+    if f.focus == "last_rebalance":
+        title = _pick(lang, "The last rebalance", "Le dernier rééquilibrage")
+        if f.last_rebalance_year is None or f.last_rebalance_month is None:
+            body = _pick(
+                lang,
+                "There has been no rebalance on this account yet.",
+                "Il n'y a pas encore eu de rééquilibrage sur ce compte.",
+            )
+        else:
+            when = (
+                f"{f.last_rebalance_day} {MONTH_NAMES[lang][f.last_rebalance_month - 1]} "
+                f"{f.last_rebalance_year}"
+            )
+            moved = exact_money(f.last_rebalance_moved_cents or 0, lang)
+            body = _pick(
+                lang,
+                f"The last rebalance was on {when}. It moved {moved} between investments to bring "
+                "the mix back to its target. A rebalance does not change the balance.",
+                f"Le dernier rééquilibrage a eu lieu le {when}. Il a déplacé {moved} entre "
+                "placements pour ramener la répartition à sa cible. Un rééquilibrage ne change "
+                "pas le solde.",
+            )
+        return Text(title, body, None, ["rebalancing", "drift", "ledger"])
+
+    month = f"{MONTH_NAMES[lang][f.month - 1]} {f.year}"
+    rise = f.change_cents >= 0
+    title = _pick(lang, f"What happened in {month}", f"Ce qui s'est passé en {month}")
+    body = _pick(
+        lang,
+        f"In {month} the balance went from {exact_money(f.start_balance_cents, lang)} to "
+        f"{exact_money(f.end_balance_cents, lang)}, {'a rise' if rise else 'a fall'} of "
+        f"{exact_money(abs(f.change_cents), lang)}. Market movements: "
+        f"{exact_money(f.market_effect_cents, lang)}. Deposits: "
+        f"{exact_money(f.deposits_cents, lang)}. Fees: {exact_money(-f.fees_cents, lang)}.",
+        f"En {month}, le solde est passé de {exact_money(f.start_balance_cents, lang)} à "
+        f"{exact_money(f.end_balance_cents, lang)}, {'une hausse' if rise else 'une baisse'} de "
+        f"{exact_money(abs(f.change_cents), lang)}. Mouvements de marché : "
+        f"{exact_money(f.market_effect_cents, lang)}. Versements : "
+        f"{exact_money(f.deposits_cents, lang)}. Frais : {exact_money(-f.fees_cents, lang)}.",
+    )
+    if f.rebalanced_this_month:
+        body += " " + _pick(
+            lang,
+            "A rebalance also moved money between investments; that does not change the balance.",
+            "Un rééquilibrage a aussi déplacé de l'argent entre placements, sans changer le solde.",
+        )
+    if level == "more_detail":
+        parts = [
+            f"{ASSET_NAMES[asset][lang]} {exact_money(cents, lang)}"
+            for asset, cents in f.market_by_asset_cents.items()
+            if cents != 0
+        ]
+        if parts:
+            body += " " + _pick(
+                lang,
+                f"Market movements by investment: {', '.join(parts)}.",
+                f"Mouvements de marché par placement : {', '.join(parts)}.",
+            )
+    return Text(title, body, None, ["volatility", "fees", "ledger"])
+
+
 def _term(term: str, level: Level, lang: Language) -> Text:
     entry = GLOSSARY[term]
     return Text(entry.term[lang], entry.definition[lang], entry.analogy[lang], [term])
@@ -292,6 +397,8 @@ def fallback(
             text = _stress_test(facts, level, language)
         case Topic.LEDGER_ENTRY, LedgerEntryFacts():
             text = _ledger_entry(facts, level, language)
+        case Topic.SUPPORT_ANSWER, SupportAnswerFacts():
+            text = _support_answer(facts, level, language)
         case _:
             raise ValueError(f"No facts of the right kind for topic '{topic}'.")
     # The topic's main glossary term supplies the everyday analogy.

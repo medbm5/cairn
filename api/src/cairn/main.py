@@ -17,6 +17,7 @@ from cairn.routers import (
     profiles,
     simulations,
     stress,
+    support,
 )
 
 
@@ -41,6 +42,7 @@ def create_app() -> FastAPI:
     app.include_router(ledger.router)
     app.include_router(stress.router)
     app.include_router(explain.router)
+    app.include_router(support.router)
     if settings.environment == "local":
         app.include_router(debug.router)
     return app

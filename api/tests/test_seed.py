@@ -6,7 +6,7 @@ from types import ModuleType
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from cairn.models import Goal, JournalEntry
+from cairn.models import Goal, JournalEntry, User
 from cairn.services import ledger
 
 
@@ -25,19 +25,22 @@ def test_seed_builds_a_reconciled_history_and_is_safe_to_run_twice(session: Sess
     seed.seed(session, today)
     entries = session.scalar(select(func.count(JournalEntry.id)))
     goals = session.scalar(select(func.count(Goal.id)))
-    assert goals == 3
+    # Three goals for the demo user, six for the five support clients.
+    assert goals == 9
+    assert session.scalar(select(func.count(User.id))) == 6
 
     seed.seed(session, today)
     assert session.scalar(select(func.count(JournalEntry.id))) == entries
-    assert session.scalar(select(func.count(Goal.id))) == 3
+    assert session.scalar(select(func.count(Goal.id))) == 9
+    assert session.scalar(select(func.count(User.id))) == 6
 
     result = ledger.reconcile(session)
     assert result.ok
     kinds = set(session.scalars(select(JournalEntry.kind)))
-    assert {"deposit", "market"} <= kinds
+    assert kinds == {"deposit", "fee", "market", "rebalance"}
     # History is dated in the past, month by month.
     first = session.scalar(select(func.min(JournalEntry.created_at)))
-    assert first is not None and first.year == 2024
+    assert first is not None and (first.year, first.month) == (2024, 4)  # 30 months back
 
 
 def test_seeded_goals_have_different_profiles_and_horizons(session: Session) -> None:

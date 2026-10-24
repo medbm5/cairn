@@ -5,8 +5,9 @@ objects from engine outputs on the server side (used by tests and the seed scrip
 """
 
 from enum import StrEnum
+from typing import Literal, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from cairn.domain.glide_path import PRESERVATION_MIX
 from cairn.domain.profiles import PROFILES, AssetClass, RiskProfile, equity_share
@@ -23,6 +24,7 @@ class Topic(StrEnum):
     REBALANCE = "rebalance"
     STRESS_TEST = "stress_test"
     LEDGER_ENTRY = "ledger_entry"
+    SUPPORT_ANSWER = "support_answer"
     TERM = "term"
 
 
@@ -70,6 +72,43 @@ class LedgerEntryFacts(BaseModel):
     accounts: list[str] = Field(max_length=10)
 
 
+class SupportAnswerFacts(BaseModel):
+    """A support question about one client, answered from their timeline only.
+
+    `month_change` breaks the balance change of one month into its parts; the parts are computed
+    in code and must add up to the change exactly, to the cent. Amounts are signed: a negative
+    change or market effect is a loss. `last_rebalance` describes the client's latest rebalance.
+    """
+
+    question: str = Field(max_length=300)
+    focus: Literal["month_change", "last_rebalance"]
+    year: int = Field(ge=2000, le=2100)
+    month: int = Field(ge=1, le=12)
+    start_balance_cents: int = Field(ge=0)
+    end_balance_cents: int = Field(ge=0)
+    change_cents: int
+    market_effect_cents: int
+    deposits_cents: int = Field(ge=0)
+    fees_cents: int = Field(ge=0)
+    market_by_asset_cents: dict[AssetClass, int]
+    rebalanced_this_month: bool
+    last_rebalance_year: int | None = Field(default=None, ge=2000, le=2100)
+    last_rebalance_month: int | None = Field(default=None, ge=1, le=12)
+    last_rebalance_day: int | None = Field(default=None, ge=1, le=31)
+    last_rebalance_moved_cents: int | None = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def check_parts_add_up(self) -> Self:
+        if self.change_cents != self.end_balance_cents - self.start_balance_cents:
+            raise ValueError("change_cents must equal end minus start balance.")
+        parts = self.market_effect_cents + self.deposits_cents - self.fees_cents
+        if parts != self.change_cents:
+            raise ValueError("Market effect, deposits and fees must add up to the change.")
+        if sum(self.market_by_asset_cents.values()) != self.market_effect_cents:
+            raise ValueError("The market effect per asset class must add up to the total.")
+        return self
+
+
 FactsModel = (
     ProjectionFacts
     | AllocationFacts
@@ -77,6 +116,7 @@ FactsModel = (
     | RebalanceFacts
     | StressTestFacts
     | LedgerEntryFacts
+    | SupportAnswerFacts
 )
 
 FACT_MODELS: dict[Topic, type[FactsModel]] = {
@@ -86,6 +126,7 @@ FACT_MODELS: dict[Topic, type[FactsModel]] = {
     Topic.REBALANCE: RebalanceFacts,
     Topic.STRESS_TEST: StressTestFacts,
     Topic.LEDGER_ENTRY: LedgerEntryFacts,
+    Topic.SUPPORT_ANSWER: SupportAnswerFacts,
 }
 
 

@@ -19,8 +19,17 @@ simulation, the glide path, the ledger) harder to review.
 - The API has **no authentication**. All endpoints act on the demo user's data.
 - The service layer still goes through `demo_user(session)` when creating goals, so ownership is
   modelled and adding real users later means replacing that one function with "the current user".
-- Abuse is limited by validation caps on every amount and horizon, by a rate limit on the only
-  endpoint that costs money (`/explain`), and by the fact that nothing stored is sensitive.
+- The **support view** (`/support/...` endpoints and the `/support` page) is also demo-scoped
+  and unauthenticated. It reads invented clients, seeded with `example.com` addresses next to the
+  demo user, who stays the first user and the only one the rest of the app acts for (the goals
+  list only shows the demo user's goals). The endpoints are: `GET /support/clients?query=`
+  (search by name or email, paginated), `GET /support/clients/{id}` (summary),
+  `GET /support/clients/{id}/timeline?from=&to=` (ledger entries and monthly market moves in one
+  chronological list) and `POST /support/clients/{id}/ask` (a plain-language answer built only
+  from that timeline). The page is linked discreetly from the footer as an internal demo.
+- Abuse is limited by validation caps on every amount and horizon, by one shared rate limit on
+  the endpoints that can call the model (`/explain` and `/support/clients/{id}/ask`), and by the
+  fact that nothing stored is sensitive.
 
 ## Consequences
 
@@ -30,3 +39,6 @@ simulation, the glide path, the ledger) harder to review.
   page says it is a demo with simplified assumptions.
 - Moving to multiple users would require: an identity provider, a `current_user` dependency,
   filtering every query by owner, and tests for cross-user access.
+- A real support tool would sit behind staff authentication with role-based access and an audit
+  log of every client record viewed. Here anyone with the URL can read the invented clients' data,
+  which is acceptable only because none of it is real.

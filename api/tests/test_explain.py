@@ -7,7 +7,13 @@ from fastapi.testclient import TestClient
 
 from cairn.domain.profiles import RiskProfile
 from cairn.explain.client import GeneratedExplanation, OpenAIExplainer
-from cairn.explain.facts import FACT_MODELS, FactsModel, ProjectionFacts, Topic
+from cairn.explain.facts import (
+    FACT_MODELS,
+    FactsModel,
+    ProjectionFacts,
+    SupportAnswerFacts,
+    Topic,
+)
 from cairn.explain.fallbacks import fallback
 from cairn.explain.glossary import GLOSSARY
 from cairn.explain.guard import numbers_in, unknown_numbers
@@ -52,6 +58,29 @@ SAMPLE_FACTS: dict[Topic, dict[str, Any]] = {
         "kind": "deposit",
         "amount_cents": 50_000,
         "accounts": ["external_bank", "holding:global_equity"],
+    },
+    Topic.SUPPORT_ANSWER: {
+        "question": "Why did the balance go down in March?",
+        "focus": "month_change",
+        "year": 2026,
+        "month": 3,
+        "start_balance_cents": 2_000_000,
+        "end_balance_cents": 1_771_234,
+        "change_cents": -228_766,
+        "market_effect_cents": -287_266,
+        "deposits_cents": 60_000,
+        "fees_cents": 1_500,
+        "market_by_asset_cents": {
+            "global_equity": -210_000,
+            "emerging_equity": -80_000,
+            "euro_gov_bonds": 2_600,
+            "money_market": 134,
+        },
+        "rebalanced_this_month": True,
+        "last_rebalance_year": 2026,
+        "last_rebalance_month": 3,
+        "last_rebalance_day": 28,
+        "last_rebalance_moved_cents": 123_456,
     },
 }
 
@@ -301,3 +330,62 @@ def test_explain_endpoint_is_rate_limited(no_ai: TestClient) -> None:
     finally:
         explain_router.rate_limiter.limit = 60
     assert codes == [200, 200, 200, 429]
+
+
+# --- Support answers ---
+
+
+def test_support_facts_must_add_up() -> None:
+    sample = SAMPLE_FACTS[Topic.SUPPORT_ANSWER]
+    with pytest.raises(ValueError, match="add up to the change"):
+        SupportAnswerFacts.model_validate(sample | {"fees_cents": 1_501})
+    with pytest.raises(ValueError, match="end minus start"):
+        SupportAnswerFacts.model_validate(sample | {"end_balance_cents": 1_771_235})
+
+
+@pytest.mark.parametrize("language", ["en", "fr"])
+def test_support_fallback_states_every_part_to_the_cent(language: str) -> None:
+    facts = parsed(Topic.SUPPORT_ANSWER)
+    text = fallback(Topic.SUPPORT_ANSWER, facts, None, "simple", language)  # type: ignore[arg-type]
+    expected = (
+        ["€2,287.66", "-€2,872.66", "€600.00", "-€15.00"]
+        if language == "en"
+        else ["2 287,66 €", "-2 872,66 €", "600,00 €", "-15,00 €"]
+    )
+    for figure in expected:
+        assert figure in text.body
+
+
+def test_support_fallback_for_the_last_rebalance() -> None:
+    facts = SupportAnswerFacts.model_validate(
+        SAMPLE_FACTS[Topic.SUPPORT_ANSWER] | {"focus": "last_rebalance"}
+    )
+    text = fallback(Topic.SUPPORT_ANSWER, facts, None, "simple", "en")
+    assert "28 March 2026" in text.body and "€1,234.56" in text.body
+    assert unknown_numbers(text.body, facts) == []
+    none_yet = SupportAnswerFacts.model_validate(
+        SAMPLE_FACTS[Topic.SUPPORT_ANSWER]
+        | {"focus": "last_rebalance", "last_rebalance_year": None, "last_rebalance_month": None}
+    )
+    assert "no rebalance" in fallback(Topic.SUPPORT_ANSWER, none_yet, None, "simple", "en").body
+
+
+def test_guard_reads_losses_without_their_sign() -> None:
+    facts = parsed(Topic.SUPPORT_ANSWER)
+    assert unknown_numbers("Markets took away €2,872.66 and global shares €2,100.", facts) == []
+    assert unknown_numbers("Markets took away €3,000.", facts) == [3000.0]
+
+
+def test_support_prompt_asks_for_the_split() -> None:
+    explainer = fake_explainer(None)
+    explain(
+        topic=Topic.SUPPORT_ANSWER,
+        facts=parsed(Topic.SUPPORT_ANSWER),
+        term=None,
+        level="simple",
+        language="en",
+        explainer=explainer,
+        cache=ResponseCache(),
+    )
+    prompt = explainer.generate.call_args.args[0]
+    assert "SUPPORT ANSWER" in prompt and "market effect, deposits, fees" in prompt

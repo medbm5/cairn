@@ -95,6 +95,17 @@ def cache_key(
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 
+# The support answer must show how the balance change splits; the split itself is in FACTS.
+SUPPORT_INSTRUCTIONS = (
+    "SUPPORT ANSWER: a support agent asks FACTS.question about a client. Answer it about that "
+    "client, in the third person. For focus month_change, state how much the balance changed in "
+    "that month and split the change into exactly these parts, with their figures as given: "
+    "market effect, deposits, fees. Negative amounts are losses. A rebalance moves money between "
+    "investments and does not change the balance. For focus last_rebalance, give its date and "
+    "the amount moved."
+)
+
+
 def build_prompt(
     topic: Topic,
     facts: FactsModel | None,
@@ -107,17 +118,18 @@ def build_prompt(
         key: {"term": GLOSSARY[key].term[language], "meaning": GLOSSARY[key].definition[language]}
         for key in terms
     }
-    return "\n".join(
-        [
-            f"TOPIC: {topic}" + (f" ({term})" if term else ""),
-            f"LANGUAGE: {'French' if language == 'fr' else 'English'}",
-            f"WORD LIMIT FOR BODY: {WORD_LIMITS[level]}",
-            "AMOUNTS: values ending in _cents are euro cents; write them in euros.",
-            "FRACTIONS: 0.25 means 25%.",
-            f"FACTS: {json.dumps(facts.model_dump(mode='json') if facts else {})}",
-            f"GLOSSARY: {json.dumps(glossary, ensure_ascii=False)}",
-        ]
-    )
+    lines = [
+        f"TOPIC: {topic}" + (f" ({term})" if term else ""),
+        f"LANGUAGE: {'French' if language == 'fr' else 'English'}",
+        f"WORD LIMIT FOR BODY: {WORD_LIMITS[level]}",
+        "AMOUNTS: values ending in _cents are euro cents; write them in euros.",
+        "FRACTIONS: 0.25 means 25%.",
+        f"FACTS: {json.dumps(facts.model_dump(mode='json') if facts else {})}",
+        f"GLOSSARY: {json.dumps(glossary, ensure_ascii=False)}",
+    ]
+    if topic == Topic.SUPPORT_ANSWER:
+        lines.append(SUPPORT_INSTRUCTIONS)
+    return "\n".join(lines)
 
 
 def check_generated(
