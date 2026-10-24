@@ -59,6 +59,7 @@ class SimulationRequest(BaseModel):
     horizon_months: int = Field(ge=12, le=480, description="Between 1 and 40 years.")
     profile: RiskProfile
     target_cents: int | None = Field(default=None, ge=0, le=MAX_AMOUNT_CENTS)
+    glide_path: bool = Field(default=False, description="Shift toward safety near the goal.")
     paths: int = Field(default=5_000, ge=100, le=10_000)
     seed: int | None = Field(default=None, ge=0, le=2**32 - 1)
 
@@ -74,3 +75,19 @@ class SimulationResponse(BaseModel):
     p90: list[int]
     contributed: list[int]
     success_probability: float | None
+
+
+# --- Glide path ---
+
+
+class GlidePathPoint(BaseModel):
+    year: int
+    months_remaining: int
+    weights: dict[AssetClass, float]
+    equity_share: float
+
+
+class GlidePathResponse(BaseModel):
+    profile: RiskProfile
+    horizon_months: int
+    points: list[GlidePathPoint]

@@ -1,7 +1,8 @@
 from fastapi import APIRouter
 
+from cairn.domain.glide_path import glide_path_for
 from cairn.domain.profiles import PROFILES
-from cairn.domain.simulation import SimulationResult, simulate
+from cairn.domain.simulation import Allocation, SimulationResult, simulate
 from cairn.schemas import SimulationRequest, SimulationResponse
 
 router = APIRouter(tags=["simulations"])
@@ -25,11 +26,14 @@ def simulation_response(result: SimulationResult, paths: int) -> SimulationRespo
 
 @router.post("/simulations")
 def run_simulation(body: SimulationRequest) -> SimulationResponse:
+    allocation: Allocation = (
+        glide_path_for(body.profile) if body.glide_path else PROFILES[body.profile].weights
+    )
     result = simulate(
         initial_cents=body.initial_cents,
         monthly_contribution_cents=body.monthly_contribution_cents,
         horizon_months=body.horizon_months,
-        allocation=PROFILES[body.profile].weights,
+        allocation=allocation,
         target_cents=body.target_cents,
         paths=body.paths,
         seed=body.seed,
