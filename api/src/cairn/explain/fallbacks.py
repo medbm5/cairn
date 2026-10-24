@@ -167,14 +167,27 @@ def _glide_path(f: GlidePathFacts, level: Level, lang: Language) -> Text:
 
 def _rebalance(f: RebalanceFacts, level: Level, lang: Language) -> Text:
     title = _pick(lang, "Back to the planned mix", "Retour à la répartition prévue")
+    if f.largest_drift is None:
+        drift_en = (
+            f"Markets moved your mix off target by more than the {percent(f.threshold, lang)}"
+        )
+        drift_fr = (
+            f"Les marchés ont décalé votre répartition de plus des {percent(f.threshold, lang)}"
+        )
+        tail_en, tail_fr = " we allow.", " tolérés."
+    else:
+        drift_en = f"Markets moved your mix off target by up to {percent(f.largest_drift, lang)}"
+        drift_fr = (
+            f"Les marchés ont décalé votre répartition jusqu'à {percent(f.largest_drift, lang)}"
+        )
+        tail_en = f", more than the {percent(f.threshold, lang)} we allow."
+        tail_fr = f", plus que les {percent(f.threshold, lang)} tolérés."
     body = _pick(
         lang,
-        f"Markets moved your mix off target by up to {percent(f.largest_drift, lang)}, more "
-        f"than the {percent(f.threshold, lang)} we allow. We moved {money(f.moved_cents, lang)} "
-        "between investments to bring it back.",
-        f"Les marchés ont décalé votre répartition jusqu'à {percent(f.largest_drift, lang)}, "
-        f"plus que les {percent(f.threshold, lang)} tolérés. Nous avons déplacé "
-        f"{money(f.moved_cents, lang)} entre placements pour la ramener à sa cible.",
+        f"{drift_en}{tail_en} We moved {money(f.moved_cents, lang)} between investments to bring "
+        "it back.",
+        f"{drift_fr}{tail_fr} Nous avons déplacé {money(f.moved_cents, lang)} entre placements "
+        "pour la ramener à sa cible.",
     )
     if level == "more_detail":
         body += " " + _pick(

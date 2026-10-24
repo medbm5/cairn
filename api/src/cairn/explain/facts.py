@@ -50,7 +50,8 @@ class GlidePathFacts(BaseModel):
 
 
 class RebalanceFacts(BaseModel):
-    largest_drift: Fraction = Field(ge=0, le=1)
+    # Not stored with past rebalances, so optional; the template words it without a figure.
+    largest_drift: Fraction | None = Field(default=None, ge=0, le=1)
     threshold: Fraction = Field(ge=0, le=1)
     moved_cents: int = Field(ge=0)
 

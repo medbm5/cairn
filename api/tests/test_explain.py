@@ -99,6 +99,13 @@ def test_every_topic_has_a_working_fallback(topic: Topic, level: str, language: 
     assert unknown_numbers(f"{text.title} {text.body}", facts) == []
 
 
+def test_rebalance_fallback_without_drift() -> None:
+    facts = FACT_MODELS[Topic.REBALANCE].model_validate({"threshold": 0.05, "moved_cents": 5_000})
+    text = fallback(Topic.REBALANCE, facts, None, "simple", "en")
+    assert "by more than the 5%" in text.body
+    assert unknown_numbers(text.body, facts) == []
+
+
 def test_term_fallback_uses_glossary() -> None:
     text = fallback(Topic.TERM, None, "volatility", "simple", "fr")
     assert text.title == "Volatilité"
@@ -273,6 +280,7 @@ def test_explain_endpoint_for_term(no_ai: TestClient) -> None:
         ({"topic": "term", "term": "unicorn"}, "Unknown term 'unicorn'"),
         ({"topic": "projection"}, "needs facts"),
         ({"topic": "rebalance", "facts": {"largest_drift": 0.1}}, "Field required"),
+        ({"topic": "rebalance", "facts": {"threshold": 0.05, "moved_cents": -1}}, "greater than"),
     ],
 )
 def test_explain_endpoint_validates_input(

@@ -10,5 +10,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     css: false,
+    // jsdom workers are slow to start on busy machines; fewer of them avoids start-up timeouts.
+    maxWorkers: 3,
   },
 })

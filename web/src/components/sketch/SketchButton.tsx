@@ -20,6 +20,13 @@ const BASE =
   'font-body text-[1.0625rem] font-bold text-ink transition-transform duration-150 ' +
   'hover:-translate-y-px active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50'
 
+// On the highlighter fill the label is always the notebook ink, even on the blueprint theme.
+const PRIMARY_TEXT: Record<Variant, string> = {
+  primary: '!text-[#1d3a6b]',
+  secondary: '',
+  quiet: '',
+}
+
 function Outline({ id, variant }: { id: string; variant: Variant }) {
   const [ref, { width, height }] = useElementSize<HTMLSpanElement>()
   const paths = useMemo(() => {
@@ -28,11 +35,9 @@ function Outline({ id, variant }: { id: string; variant: Variant }) {
       g.rectangle(2, 2, width - 4, height - 4, {
         ...PEN,
         seed: seedFrom(id),
+        // Solid highlighter behind dark ink keeps the label readable in both themes.
         fill: variant === 'primary' ? 'var(--highlighter)' : undefined,
-        fillStyle: 'hachure',
-        hachureGap: 5,
-        fillWeight: 2.2,
-        hachureAngle: -41,
+        fillStyle: 'solid',
       }),
     )
   }, [width, height, id, variant])
@@ -55,7 +60,7 @@ export function SketchButton({
   ...props
 }: Common & ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button type={type} className={`${BASE} ${className}`} {...props}>
+    <button type={type} className={`${BASE} ${PRIMARY_TEXT[variant]} ${className}`} {...props}>
       <Outline id={sketchId} variant={variant} />
       <span className="relative">{children}</span>
     </button>
@@ -70,7 +75,7 @@ export function SketchLink({
   to,
 }: Common & { to: string }) {
   return (
-    <Link to={to} className={`${BASE} no-underline ${className}`}>
+    <Link to={to} className={`${BASE} ${PRIMARY_TEXT[variant]} no-underline ${className}`}>
       <Outline id={sketchId} variant={variant} />
       <span className="relative">{children}</span>
     </Link>
