@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from cairn.config import get_settings
 from cairn.logging import configure_logging
 from cairn.middleware import REQUEST_ID_HEADER, RequestIdMiddleware
-from cairn.routers import glide_path, health, profiles, simulations
+from cairn.routers import glide_path, goals, health, profiles, simulations
 
 
 def create_app() -> FastAPI:
@@ -25,6 +25,7 @@ def create_app() -> FastAPI:
     app.include_router(profiles.router)
     app.include_router(simulations.router)
     app.include_router(glide_path.router)
+    app.include_router(goals.router)
     return app
 
 

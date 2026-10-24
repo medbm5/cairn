@@ -1,9 +1,12 @@
 """Pydantic request and response models."""
 
-from typing import Literal
+from datetime import date, datetime
+from enum import StrEnum
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
 
+from cairn.domain.dates import months_between
 from cairn.domain.profiles import AssetClass, RiskProfile
 
 Language = Literal["en", "fr"]
@@ -91,3 +94,68 @@ class GlidePathResponse(BaseModel):
     profile: RiskProfile
     horizon_months: int
     points: list[GlidePathPoint]
+
+
+# --- Goals ---
+
+
+class GoalType(StrEnum):
+    RETIREMENT = "retirement"
+    HOME = "home"
+    SAFETY_NET = "safety_net"
+    STUDIES = "studies"
+    OTHER = "other"
+
+
+def _check_target_date(value: date) -> date:
+    months = months_between(date.today(), value)
+    if months < 12:
+        raise ValueError("The target date must be at least one year from today.")
+    if months > 480:
+        raise ValueError("The target date must be at most 40 years from today.")
+    return value
+
+
+GoalName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
+TargetDate = Annotated[date, AfterValidator(_check_target_date)]
+TargetCents = Annotated[int, Field(gt=0, le=MAX_AMOUNT_CENTS)]
+MonthlyCents = Annotated[int, Field(ge=0, le=MAX_MONTHLY_CENTS)]
+
+
+class GoalCreate(BaseModel):
+    name: GoalName
+    type: GoalType
+    target_cents: TargetCents
+    target_date: TargetDate
+    monthly_contribution_cents: MonthlyCents
+    profile: RiskProfile
+
+
+class GoalUpdate(BaseModel):
+    name: GoalName | None = None
+    type: GoalType | None = None
+    target_cents: TargetCents | None = None
+    target_date: TargetDate | None = None
+    monthly_contribution_cents: MonthlyCents | None = None
+    profile: RiskProfile | None = None
+
+
+class GoalOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    type: GoalType
+    target_cents: int
+    target_date: date
+    monthly_contribution_cents: int
+    profile: RiskProfile
+    created_at: datetime
+
+
+class GoalProjection(BaseModel):
+    goal_id: int
+    horizon_months: int
+    start_cents: int
+    target_cents: int
+    simulation: SimulationResponse
