@@ -39,7 +39,9 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="relative max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-t-2xl border-2 border-b-0 border-ink bg-paper p-5 pb-8 shadow-lg"
+        // Without this, Lenis smooth scrolling (landing page) swallows wheel and touch scrolls.
+        data-lenis-prevent
+        className="relative max-h-[85dvh] w-full max-w-xl overflow-y-auto overscroll-contain rounded-t-2xl border-2 border-b-0 border-ink bg-paper p-5 pb-8 shadow-lg"
       >
         <div className="mb-3 flex items-start justify-between gap-4">
           <h2 id={titleId} className="text-2xl">

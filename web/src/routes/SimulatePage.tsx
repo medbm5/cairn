@@ -272,10 +272,34 @@ export function SimulatePage() {
           </div>
           {data && <p className="sr-only">{summary}</p>}
           <ul className="grid gap-1 text-sm text-graphite sm:grid-cols-2">
-            <li>{t('simLegendRange')}</li>
-            <li>{t('simLegendMedian')}</li>
-            <li>{t('simLegendTarget')}</li>
-            <li>{t('simLegendContributed')}</li>
+            <li className="flex items-baseline gap-2">
+              <span
+                aria-hidden="true"
+                className="inline-block h-3 w-5 shrink-0 bg-chart-range/60"
+              />
+              {t('simLegendRange')}
+            </li>
+            <li className="flex items-baseline gap-2">
+              <span
+                aria-hidden="true"
+                className="inline-block w-5 shrink-0 -translate-y-1 border-t-[3px] border-chart-median"
+              />
+              {t('simLegendMedian')}
+            </li>
+            <li className="flex items-baseline gap-2">
+              <span
+                aria-hidden="true"
+                className="inline-block w-5 shrink-0 -translate-y-1 border-t-2 border-dashed border-chart-target"
+              />
+              {t('simLegendTarget')}
+            </li>
+            <li className="flex items-baseline gap-2">
+              <span
+                aria-hidden="true"
+                className="inline-block w-5 shrink-0 -translate-y-1 border-t-2 border-dotted border-graphite"
+              />
+              {t('simLegendContributed')}
+            </li>
           </ul>
           <PebbleInline anchorId="sim-median" />
         </div>

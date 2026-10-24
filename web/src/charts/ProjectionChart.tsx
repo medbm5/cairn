@@ -186,7 +186,14 @@ export function ProjectionChart({
             patternUnits="userSpaceOnUse"
             patternTransform="rotate(-41)"
           >
-            <line x1="0" y1="0" x2="0" y2="9" stroke="currentColor" strokeWidth="1.1" />
+            <line
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="9"
+              style={{ stroke: 'var(--chart-range)' }}
+              strokeWidth="1.1"
+            />
           </pattern>
           <pattern
             id={`${patternId}-inner`}
@@ -195,7 +202,14 @@ export function ProjectionChart({
             patternUnits="userSpaceOnUse"
             patternTransform="rotate(-41)"
           >
-            <line x1="0" y1="0" x2="0" y2="4.5" stroke="currentColor" strokeWidth="1.1" />
+            <line
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="4.5"
+              style={{ stroke: 'var(--chart-range)' }}
+              strokeWidth="1.1"
+            />
           </pattern>
         </defs>
 
@@ -228,7 +242,7 @@ export function ProjectionChart({
             </g>
 
             {/* Range of outcomes: more ink where outcomes are likelier */}
-            <g className="text-ink" opacity={0.55}>
+            <g className="text-chart-range" opacity={0.75}>
               {sketched ? (
                 <>
                   <RoughPaths paths={sketched.outer} pathProps={bandPathProps} />
@@ -261,8 +275,8 @@ export function ProjectionChart({
                   x2={x(maxMonth)}
                   y1={y(targetCents)}
                   y2={y(targetCents)}
-                  stroke="var(--ink)"
-                  strokeWidth={1.6}
+                  stroke="var(--chart-target)"
+                  strokeWidth={1.8}
                   strokeDasharray="7 6"
                 />
                 <svg
@@ -272,19 +286,23 @@ export function ProjectionChart({
                   height={32}
                   overflow="visible"
                 >
-                  <CairnGlyph className="text-ink" />
+                  <CairnGlyph className="text-chart-target" />
                 </svg>
               </g>
             )}
 
             {/* Median: the confident pen line */}
             {sketched ? (
-              <RoughPaths paths={sketched.median} pathProps={medianPathProps} />
+              <RoughPaths
+                className="text-chart-median"
+                paths={sketched.median}
+                pathProps={medianPathProps}
+              />
             ) : (
               <path
                 d={smooth.median}
                 fill="none"
-                stroke="var(--ink)"
+                stroke="var(--chart-median)"
                 strokeWidth={2.6}
                 strokeLinecap="round"
               />

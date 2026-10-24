@@ -45,7 +45,13 @@ export function SpeechBubble({
       <svg aria-hidden="true" className="absolute inset-0 h-full w-full overflow-visible">
         <RoughPaths paths={paths} />
       </svg>
-      <div className="relative p-4">{children}</div>
+      {/* Long explanations scroll inside the bubble; Lenis must leave the wheel to it. */}
+      <div
+        data-lenis-prevent
+        className="relative max-h-[min(26rem,60vh)] overflow-y-auto overscroll-contain p-4"
+      >
+        {children}
+      </div>
     </div>
   )
 }

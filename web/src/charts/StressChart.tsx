@@ -15,7 +15,7 @@ export const REPLAY_MS = 2200
 
 /**
  * A crisis replay: the value path drawn in red pen (it draws itself, month by month), and the
- * same mix with rebalancing as a dashed graphite line for comparison.
+ * same mix with rebalancing as a dashed blue line for comparison.
  */
 export function StressChart({
   id,
@@ -114,7 +114,7 @@ export function StressChart({
             <path
               d={rebalanced}
               fill="none"
-              stroke="var(--graphite)"
+              stroke="var(--chart-range)"
               strokeWidth={1.8}
               strokeDasharray="6 5"
             />
@@ -133,7 +133,7 @@ export function StressChart({
         <li>
           <span
             aria-hidden="true"
-            className="mr-2 inline-block w-6 border-t-2 border-dashed border-graphite align-middle"
+            className="mr-2 inline-block w-6 border-t-2 border-dashed border-chart-range align-middle"
           />
           {t('stressWith')}
         </li>

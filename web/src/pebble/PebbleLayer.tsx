@@ -111,7 +111,8 @@ export function PebbleLayer() {
     return (
       <aside
         aria-live="polite"
-        className="fixed inset-x-4 bottom-4 z-40 mx-auto max-w-lg border-2 border-ink bg-paper p-4 shadow-md"
+        data-lenis-prevent
+        className="fixed inset-x-4 bottom-4 z-40 mx-auto max-h-[60vh] max-w-lg overflow-y-auto overscroll-contain border-2 border-ink bg-paper p-4 shadow-md"
       >
         <SpeechContent handwritten={false} />
       </aside>

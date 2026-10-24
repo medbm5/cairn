@@ -10,6 +10,9 @@
   --color-highlighter: var(--highlighter);
   --color-red-pen: var(--red-pen);
   --color-leaf: var(--leaf);
+  --color-chart-range: var(--chart-range);
+  --color-chart-median: var(--chart-median);
+  --color-chart-target: var(--chart-target);
   --font-hand: 'Architects Daughter', 'Segoe Print', 'Comic Sans MS', cursive;
   --font-body: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
@@ -23,6 +26,14 @@
   --highlighter: #ffe45c;
   --red-pen: #d2413a;
   --leaf: #3f8f5a;
+  /* Chart colours, checked for colour-blind separation and 3:1 contrast on the paper. */
+  --chart-range: #2563a8;
+  --chart-median: #c2560c;
+  --chart-target: var(--leaf);
+  --asset-global-equity: #2563a8;
+  --asset-emerging-equity: #c2560c;
+  --asset-euro-gov-bonds: #7a4fb3;
+  --asset-money-market: #1f8a70;
   --grid-strong: color-mix(in srgb, var(--grid) 70%, var(--ink));
   color-scheme: light;
 }
@@ -36,6 +47,13 @@
   --highlighter: #f6d743;
   --red-pen: #ff7a70;
   --leaf: #7fd39a;
+  --chart-range: #5896e0;
+  --chart-median: #db722c;
+  --chart-target: var(--leaf);
+  --asset-global-equity: #5896e0;
+  --asset-emerging-equity: #db722c;
+  --asset-euro-gov-bonds: #a07ae0;
+  --asset-money-market: #2aa686;
   --grid-strong: color-mix(in srgb, var(--grid) 75%, var(--ink));
   color-scheme: dark;
 }
