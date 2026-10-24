@@ -17,11 +17,14 @@ from cairn.domain.dates import months_between
 from cairn.domain.glide_path import allocation_at
 from cairn.domain.money import split_cents
 from cairn.domain.profiles import ASSET_CLASSES, AssetClass, RiskProfile, Weights
+from cairn.domain.rebalancing import max_drift, rebalance_transfers
+from cairn.domain.simulation import monthly_asset_returns
 from cairn.models import Account, Goal, JournalEntry, JournalLine
 
 EXTERNAL_BANK = "external_bank"
 CASH = "cash"
 FEES = "fees"
+MARKET = "market"  # counterpart of price movements: gains are negative here, losses positive
 
 
 def holding(asset: AssetClass) -> str:
@@ -157,6 +160,66 @@ def charge_fee(
     )
 
 
+def mark_to_market(session: Session, goal: Goal, year: int, month: int) -> JournalEntry | None:
+    """Apply one month of seeded market returns to the goal's holdings (once per month).
+
+    Returns the entry, or None when there is nothing to revalue.
+    """
+    key = f"mtm:{goal.id}:{year:04d}-{month:02d}"
+    existing = find_entry(session, key)
+    if existing is not None:
+        return existing
+    returns = monthly_asset_returns(seed=goal.id, month=year * 12 + month)
+    moves = {a: round(cents * returns[a]) for a, cents in holdings(session, goal).items()}
+    lines = [(holding(a), cents) for a, cents in moves.items()]
+    lines.append((MARKET, -sum(moves.values())))
+    if all(cents == 0 for cents in moves.values()):
+        return None
+    entry, _ = post_entry(
+        session,
+        goal=goal,
+        kind="market",
+        idempotency_key=key,
+        description=f"Market movements for {year:04d}-{month:02d}",
+        lines=lines,
+    )
+    return entry
+
+
+@dataclass(frozen=True)
+class RebalanceOutcome:
+    entry: JournalEntry | None
+    created: bool
+    drift_before: float
+    target: Weights
+
+
+def rebalance(session: Session, goal: Goal, as_of: date) -> RebalanceOutcome:
+    """Rebalance back to the current glide-path allocation if any class drifted more than 5 points.
+
+    Idempotent per goal and date: a second call on the same date returns the first entry.
+    """
+    key = f"rebalance:{goal.id}:{as_of.isoformat()}"
+    target = current_allocation(goal, as_of)
+    current = holdings(session, goal)
+    drift = max_drift(current, target)
+    existing = find_entry(session, key)
+    if existing is not None:
+        return RebalanceOutcome(existing, created=False, drift_before=drift, target=target)
+    transfers = rebalance_transfers(current, target)
+    if not transfers:
+        return RebalanceOutcome(None, created=False, drift_before=drift, target=target)
+    entry, created = post_entry(
+        session,
+        goal=goal,
+        kind="rebalance",
+        idempotency_key=key,
+        description=f"Rebalance on {as_of.isoformat()} (largest drift {drift:.1%})",
+        lines=[(holding(a), cents) for a, cents in transfers.items()],
+    )
+    return RebalanceOutcome(entry, created=created, drift_before=drift, target=target)
+
+
 def account_balances(session: Session, goal: Goal) -> dict[str, int]:
     rows = session.execute(
         select(Account.kind, Account.balance_cents).where(Account.goal_id == goal.id)
@@ -169,14 +232,11 @@ def contributed_cents(session: Session, goal: Goal) -> int:
     return -account_balances(session, goal).get(EXTERNAL_BANK, 0)
 
 
-def entries(session: Session, goal: Goal) -> list[JournalEntry]:
-    return list(
-        session.scalars(
-            select(JournalEntry)
-            .where(JournalEntry.goal_id == goal.id)
-            .order_by(JournalEntry.id.desc())
-        )
-    )
+def entries(session: Session, goal: Goal, kind: str | None = None) -> list[JournalEntry]:
+    query = select(JournalEntry).where(JournalEntry.goal_id == goal.id)
+    if kind is not None:
+        query = query.where(JournalEntry.kind == kind)
+    return list(session.scalars(query.order_by(JournalEntry.id.desc())))
 
 
 @dataclass(frozen=True)

@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Header, Response, status
 
+from cairn.domain.rebalancing import DRIFT_THRESHOLD
 from cairn.models import JournalEntry
 from cairn.routers.goals import GoalDep, SessionDep
 from cairn.schemas import (
@@ -11,6 +12,8 @@ from cairn.schemas import (
     DepositCreate,
     JournalEntryOut,
     JournalLineOut,
+    RebalanceOut,
+    RebalanceRequest,
     ReconciliationOut,
 )
 from cairn.services import ledger
@@ -68,6 +71,27 @@ def get_balance(goal: GoalDep, session: SessionDep) -> BalanceOut:
 @router.get("/goals/{goal_id}/entries")
 def list_entries(goal: GoalDep, session: SessionDep) -> list[JournalEntryOut]:
     return [entry_out(entry) for entry in ledger.entries(session, goal)]
+
+
+@router.post("/goals/{goal_id}/rebalance")
+def rebalance(
+    goal: GoalDep, session: SessionDep, body: RebalanceRequest | None = None
+) -> RebalanceOut:
+    as_of = body.as_of if body and body.as_of else date.today()
+    outcome = ledger.rebalance(session, goal, as_of)
+    return RebalanceOut(
+        rebalanced=outcome.entry is not None,
+        created=outcome.created,
+        drift_before=round(outcome.drift_before, 4),
+        threshold=DRIFT_THRESHOLD,
+        target_weights={a: round(w, 4) for a, w in outcome.target.items()},
+        entry=entry_out(outcome.entry) if outcome.entry else None,
+    )
+
+
+@router.get("/goals/{goal_id}/rebalances")
+def list_rebalances(goal: GoalDep, session: SessionDep) -> list[JournalEntryOut]:
+    return [entry_out(entry) for entry in ledger.entries(session, goal, kind="rebalance")]
 
 
 @router.get("/ledger/reconciliation")

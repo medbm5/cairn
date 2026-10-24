@@ -107,3 +107,14 @@ def simulate(
         contributed=[initial_cents + monthly_contribution_cents * m for m in months],
         success_probability=success,
     )
+
+
+def monthly_asset_returns(
+    seed: int, month: int, assumptions: Mapping[AssetClass, AssetAssumption] = ASSUMPTIONS
+) -> dict[AssetClass, float]:
+    """Deterministic simple returns of each asset class for one month, used for the demo's price
+    movements. The same (seed, month) always gives the same returns."""
+    mu, cov = monthly_log_moments(assumptions)
+    rng = np.random.default_rng([seed, month])
+    log_returns = rng.multivariate_normal(mu, cov)
+    return {asset: float(np.expm1(r)) for asset, r in zip(ASSET_CLASSES, log_returns, strict=True)}

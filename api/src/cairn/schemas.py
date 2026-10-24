@@ -198,3 +198,19 @@ class ReconciliationOut(BaseModel):
     unbalanced_entry_ids: list[int]
     mismatched_account_ids: list[int]
     total_cents: int
+
+
+# --- Rebalancing ---
+
+
+class RebalanceRequest(BaseModel):
+    as_of: date | None = Field(default=None, description="Defaults to today.")
+
+
+class RebalanceOut(BaseModel):
+    rebalanced: bool
+    created: bool
+    drift_before: float
+    threshold: float
+    target_weights: dict[AssetClass, float]
+    entry: JournalEntryOut | None
