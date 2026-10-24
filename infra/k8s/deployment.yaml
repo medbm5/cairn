@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cairn-api
+  labels:
+    app: cairn-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cairn-api
+  template:
+    metadata:
+      labels:
+        app: cairn-api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      initContainers:
+        - name: migrate
+          image: ghcr.io/your-org/cairn-api:latest
+          command: ["alembic", "upgrade", "head"]
+          envFrom:
+            - configMapRef:
+                name: cairn-api
+            - secretRef:
+                name: cairn-api
+      containers:
+        - name: api
+          image: ghcr.io/your-org/cairn-api:latest
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: cairn-api
+            - secretRef:
+                name: cairn-api
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          # /health answers 200 with "degraded" when the database is down, so liveness does not
+          # restart pods during a database outage; readiness waits for the app to answer.
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true

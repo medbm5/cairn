@@ -7,7 +7,7 @@ the person's bank account shows as a negative `external_bank` balance.
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -64,11 +64,13 @@ def post_entry(
     idempotency_key: str,
     description: str,
     lines: Sequence[tuple[str, int]],
+    created_at: datetime | None = None,
 ) -> tuple[JournalEntry, bool]:
     """Post one balanced entry in a single transaction.
 
     `lines` are (account kind, signed cents). Returns (entry, created). If an entry with the same
-    idempotency key exists, it is returned unchanged with created=False.
+    idempotency key exists, it is returned unchanged with created=False. `created_at` defaults to
+    now; the seed script sets it to replay past months.
     """
     existing = find_entry(session, idempotency_key)
     if existing is not None:
@@ -84,6 +86,8 @@ def post_entry(
         entry = JournalEntry(
             goal_id=goal.id, kind=kind, idempotency_key=idempotency_key, description=description
         )
+        if created_at is not None:
+            entry.created_at = created_at
         session.add(entry)
         deltas: dict[str, int] = {}
         for account_kind, amount in lines:
@@ -113,7 +117,12 @@ def current_allocation(goal: Goal, today: date) -> Weights:
 
 
 def deposit(
-    session: Session, goal: Goal, amount_cents: int, idempotency_key: str, today: date
+    session: Session,
+    goal: Goal,
+    amount_cents: int,
+    idempotency_key: str,
+    today: date,
+    created_at: datetime | None = None,
 ) -> tuple[JournalEntry, bool]:
     """Move money from the person's bank and invest it according to the current allocation."""
     if amount_cents <= 0:
@@ -128,6 +137,7 @@ def deposit(
         idempotency_key=f"deposit:{goal.id}:{idempotency_key}",
         description=f"Deposit of {amount_cents} cents",
         lines=lines,
+        created_at=created_at,
     )
 
 
@@ -160,7 +170,9 @@ def charge_fee(
     )
 
 
-def mark_to_market(session: Session, goal: Goal, year: int, month: int) -> JournalEntry | None:
+def mark_to_market(
+    session: Session, goal: Goal, year: int, month: int, created_at: datetime | None = None
+) -> JournalEntry | None:
     """Apply one month of seeded market returns to the goal's holdings (once per month).
 
     Returns the entry, or None when there is nothing to revalue.
@@ -182,6 +194,7 @@ def mark_to_market(session: Session, goal: Goal, year: int, month: int) -> Journ
         idempotency_key=key,
         description=f"Market movements for {year:04d}-{month:02d}",
         lines=lines,
+        created_at=created_at,
     )
     return entry
 
@@ -194,7 +207,9 @@ class RebalanceOutcome:
     target: Weights
 
 
-def rebalance(session: Session, goal: Goal, as_of: date) -> RebalanceOutcome:
+def rebalance(
+    session: Session, goal: Goal, as_of: date, created_at: datetime | None = None
+) -> RebalanceOutcome:
     """Rebalance back to the current glide-path allocation if any class drifted more than 5 points.
 
     Idempotent per goal and date: a second call on the same date returns the first entry.
@@ -216,6 +231,7 @@ def rebalance(session: Session, goal: Goal, as_of: date) -> RebalanceOutcome:
         idempotency_key=key,
         description=f"Rebalance on {as_of.isoformat()} (largest drift {drift:.1%})",
         lines=[(holding(a), cents) for a, cents in transfers.items()],
+        created_at=created_at,
     )
     return RebalanceOutcome(entry, created=created, drift_before=drift, target=target)
 

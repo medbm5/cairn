@@ -1,0 +1,5 @@
+# The Secret is not listed: create it from secret.example.yaml (filled in, never committed).
+resources:
+  - configmap.yaml
+  - deployment.yaml
+  - service.yaml

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cairn-api
+  labels:
+    app: cairn-api
+data:
+  ENVIRONMENT: production
+  CORS_ORIGINS: https://your-app.vercel.app
+  OPENAI_MODEL: gpt-4o-mini
