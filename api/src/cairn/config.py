@@ -23,6 +23,15 @@ class Settings(BaseSettings):
         default="", validation_alias=AliasChoices("RELEASE", "GIT_SHA", "RENDER_GIT_COMMIT")
     )
 
+    @field_validator("database_url")
+    @classmethod
+    def use_psycopg_driver(cls, value: str) -> str:
+        """Hosts such as Render give postgres:// URLs; SQLAlchemy needs the psycopg 3 driver."""
+        for prefix in ("postgres://", "postgresql://"):
+            if value.startswith(prefix):
+                return "postgresql+psycopg://" + value.removeprefix(prefix)
+        return value
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def split_origins(cls, value: object) -> object:

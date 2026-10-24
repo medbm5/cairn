@@ -22,4 +22,5 @@ COPY alembic.ini ./
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1
 USER cairn
 EXPOSE 8000
-CMD ["uvicorn", "cairn.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Hosts such as Render set PORT; 8000 locally.
+CMD ["sh", "-c", "uvicorn cairn.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

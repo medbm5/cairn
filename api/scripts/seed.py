@@ -5,8 +5,10 @@ built exactly as in production and always reconciles. Safe to run twice: goals a
 name and every posting has an idempotency key, so a second run adds nothing.
 
 Run from api/:  uv run python scripts/seed.py
+With --if-empty it does nothing when goals already exist (used on Render, to seed only once).
 """
 
+import sys
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 
@@ -95,6 +97,9 @@ def seed(session: Session, today: date) -> list[Goal]:
 
 def main() -> None:
     with get_sessionmaker()() as session:
+        if "--if-empty" in sys.argv and session.scalars(select(Goal.id).limit(1)).first():
+            print("Goals already exist; skipping the demo seed.")
+            return
         goals = seed(session, date.today())
         result = ledger.reconcile(session)
         print(f"Seeded {len(goals)} goals. Ledger reconciled: {result.ok}")
