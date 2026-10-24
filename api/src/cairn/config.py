@@ -3,7 +3,7 @@
 from functools import lru_cache
 from typing import Annotated
 
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -18,7 +18,10 @@ class Settings(BaseSettings):
     sentry_dsn: str = ""
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
-    release: str = ""
+    # Git SHA of the deployed code; Render sets RENDER_GIT_COMMIT automatically.
+    release: str = Field(
+        default="", validation_alias=AliasChoices("RELEASE", "GIT_SHA", "RENDER_GIT_COMMIT")
+    )
 
     @field_validator("cors_origins", mode="before")
     @classmethod

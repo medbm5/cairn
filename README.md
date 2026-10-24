@@ -65,6 +65,28 @@ npm run dev
 
 The app runs without an OpenAI key or Sentry DSN; those features fall back gracefully.
 
+## Monitoring
+
+- **Logs** are JSON lines (structlog). Every request gets an `X-Request-ID` (reused if the client
+  sends one), which is returned in the response and attached to every log line.
+- **Sentry** captures errors from the API and the web app when `SENTRY_DSN` / `VITE_SENTRY_DSN`
+  are set; without them it is a no-op. Events carry the environment, the release (the git SHA,
+  from `RENDER_GIT_COMMIT` on Render) and the request ID as a tag, so a Sentry event leads
+  straight to the matching log lines.
+- **Checking the setup:** with `ENVIRONMENT=local`, `GET /debug/sentry` raises a test error. The
+  route does not exist in any other environment.
+
+### From a Sentry issue to a GitHub issue
+
+1. In Sentry, install the GitHub integration (Settings → Integrations → GitHub) and give it
+   access to this repository.
+2. In the project's settings, add the repository under *Code Mappings* (`api/src/` → `src/`,
+   `web/src/` → `src/`) so stack traces link to the right lines.
+3. On any Sentry issue, use **Link GitHub Issue** (or *Create GitHub Issue*). The GitHub issue
+   gets the Sentry link, and the bug template asks for the request ID.
+4. Mention `Fixes SENTRY-ID` (Sentry's short ID) in the pull request or commit that fixes it;
+   Sentry resolves the issue when that release is deployed.
+
 ## Tests
 
 ```bash

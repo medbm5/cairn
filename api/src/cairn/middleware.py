@@ -9,6 +9,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from cairn.logging import get_logger
+from cairn.monitoring import tag_request
 
 REQUEST_ID_HEADER = "X-Request-ID"
 log = get_logger("cairn.http")
@@ -20,6 +21,7 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         structlog.contextvars.clear_contextvars()
         structlog.contextvars.bind_contextvars(request_id=request_id)
         request.state.request_id = request_id
+        tag_request(request_id)
         started = time.perf_counter()
         response = await call_next(request)
         response.headers[REQUEST_ID_HEADER] = request_id

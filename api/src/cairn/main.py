@@ -6,7 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from cairn.config import get_settings
 from cairn.logging import configure_logging
 from cairn.middleware import REQUEST_ID_HEADER, RequestIdMiddleware
+from cairn.monitoring import init_sentry
 from cairn.routers import (
+    debug,
     explain,
     glide_path,
     goals,
@@ -21,6 +23,7 @@ from cairn.routers import (
 def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging()
+    init_sentry(settings)
     app = FastAPI(title="Cairn API", version="0.1.0")
     app.add_middleware(
         CORSMiddleware,
@@ -38,6 +41,8 @@ def create_app() -> FastAPI:
     app.include_router(ledger.router)
     app.include_router(stress.router)
     app.include_router(explain.router)
+    if settings.environment == "local":
+        app.include_router(debug.router)
     return app
 
 
