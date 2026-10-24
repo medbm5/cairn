@@ -9,6 +9,7 @@ from cairn.models import Goal
 from cairn.routers.simulations import simulation_response
 from cairn.schemas import GoalCreate, GoalOut, GoalProjection, GoalUpdate
 from cairn.services import goals as service
+from cairn.services import ledger
 
 router = APIRouter(prefix="/goals", tags=["goals"])
 
@@ -54,10 +55,11 @@ def delete_goal(goal: GoalDep, session: SessionDep) -> Response:
 @router.get("/{goal_id}/projection")
 def goal_projection(
     goal: GoalDep,
+    session: SessionDep,
     seed: Annotated[int | None, Query(ge=0, le=2**32 - 1)] = None,
     paths: Annotated[int, Query(ge=100, le=10_000)] = 5_000,
 ) -> GoalProjection:
-    start_cents = 0
+    start_cents = sum(ledger.holdings(session, goal).values())
     horizon, result = service.project_goal(
         goal, start_cents=start_cents, today=date.today(), seed=seed, paths=paths
     )

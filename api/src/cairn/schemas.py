@@ -159,3 +159,42 @@ class GoalProjection(BaseModel):
     start_cents: int
     target_cents: int
     simulation: SimulationResponse
+
+
+# --- Ledger ---
+
+
+class DepositCreate(BaseModel):
+    amount_cents: int = Field(gt=0, le=MAX_AMOUNT_CENTS)
+
+
+class JournalLineOut(BaseModel):
+    account: str
+    amount_cents: int
+
+
+class JournalEntryOut(BaseModel):
+    id: int
+    goal_id: int
+    kind: str
+    description: str
+    created_at: datetime
+    lines: list[JournalLineOut]
+
+
+class BalanceOut(BaseModel):
+    goal_id: int
+    total_cents: int
+    contributed_cents: int
+    fees_cents: int
+    holdings: dict[AssetClass, int]
+    weights: dict[AssetClass, float]
+
+
+class ReconciliationOut(BaseModel):
+    ok: bool
+    entries_checked: int
+    accounts_checked: int
+    unbalanced_entry_ids: list[int]
+    mismatched_account_ids: list[int]
+    total_cents: int
