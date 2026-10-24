@@ -8,6 +8,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstra
 
 from cairn.domain.dates import months_between
 from cairn.domain.profiles import AssetClass, RiskProfile
+from cairn.domain.stress import Scenario
 
 Language = Literal["en", "fr"]
 
@@ -214,3 +215,24 @@ class RebalanceOut(BaseModel):
     threshold: float
     target_weights: dict[AssetClass, float]
     entry: JournalEntryOut | None
+
+
+# --- Stress tests ---
+
+
+class ReplayOut(BaseModel):
+    values: list[int]
+    max_drawdown: float
+    months_to_recover: int | None
+    rebalances: int
+
+
+class StressTestOut(BaseModel):
+    scenario: Scenario
+    name: str
+    description: str
+    months: int
+    start_cents: int
+    weights: dict[AssetClass, float]
+    without_rebalancing: ReplayOut
+    with_rebalancing: ReplayOut
