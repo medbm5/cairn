@@ -6,8 +6,7 @@
 
 **Plan a life goal on paper, with a little robot that explains investing in everyday words.**
 
-[Live demo](https://your-app.vercel.app) · [API docs](https://your-api.onrender.com/docs)
-<!-- Replace both links once deployed (see docs/deploy.md). -->
+[Live demo](https://cairn-six-self.vercel.app) · [API docs](https://cairn-api-hyt9.onrender.com/docs)
 
 ![Cairn's landing page: a hand-drawn projection of savings with Pebble the robot](docs/screenshots/landing.jpg)
 
@@ -17,13 +16,9 @@
 
 ## Demo video
 
-
-
 https://github.com/user-attachments/assets/013fcb3c-03d3-4482-b189-a43bef5621b6
 
-
-
-<sub>Click the picture to play the video (22 seconds, with sound).</sub>
+<sub>The 22-second cut. For every feature in order, watch the [full 44-second tour](docs/demo/cairn-demo.mp4) (with sound).</sub>
 
 ## What you can do
 
