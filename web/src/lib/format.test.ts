@@ -1,4 +1,4 @@
-import { formatDuration, formatMoney, formatPercent } from './format'
+import { formatDate, formatDuration, formatMoney, formatPercent } from './format'
 
 // Intl uses (narrow) no-break spaces in French; normalise all whitespace to plain spaces.
 const plain = (text: string) => text.replace(/\s/g, ' ')
@@ -23,4 +23,10 @@ test('formats durations in years and months', () => {
   expect(formatDuration(24, 'en')).toBe('2 years')
   expect(formatDuration(13, 'fr')).toBe('1 an et 1 mois')
   expect(formatDuration(5, 'en')).toBe('5 months')
+})
+
+test('a calendar date keeps its month in every time zone', () => {
+  // The test run's time zone is set west of Greenwich (see vitest config).
+  expect(formatDate('2039-05-01', 'en')).toBe('May 2039')
+  expect(formatDate('2039-05-01', 'fr')).toBe('mai 2039')
 })

@@ -23,9 +23,16 @@ export function formatNumber(value: number, language: Language): string {
   return new Intl.NumberFormat(LOCALES[language]).format(value)
 }
 
+/** A calendar date ("2039-05-01") is that day wherever the reader is; `new Date` would read it
+ * as UTC midnight, which is still the previous month west of Greenwich. */
+function parseDate(iso: string): Date {
+  const day = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  return day ? new Date(Number(day[1]), Number(day[2]) - 1, Number(day[3])) : new Date(iso)
+}
+
 export function formatDate(iso: string, language: Language): string {
   return new Intl.DateTimeFormat(LOCALES[language], { year: 'numeric', month: 'long' }).format(
-    new Date(iso),
+    parseDate(iso),
   )
 }
 
