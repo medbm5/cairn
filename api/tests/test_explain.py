@@ -11,13 +11,14 @@ from cairn.explain.facts import (
     FACT_MODELS,
     FactsModel,
     ProjectionFacts,
+    SolverFacts,
     SupportAnswerFacts,
     Topic,
 )
 from cairn.explain.fallbacks import fallback
 from cairn.explain.glossary import GLOSSARY
 from cairn.explain.guard import numbers_in, unknown_numbers
-from cairn.explain.service import WORD_LIMITS, ResponseCache, explain
+from cairn.explain.service import WORD_LIMITS, ResponseCache, build_prompt, explain
 from cairn.routers import explain as explain_router
 
 SAMPLE_FACTS: dict[Topic, dict[str, Any]] = {
@@ -81,6 +82,27 @@ SAMPLE_FACTS: dict[Topic, dict[str, Any]] = {
         "last_rebalance_month": 3,
         "last_rebalance_day": 28,
         "last_rebalance_moved_cents": 123_456,
+    },
+    Topic.SOLVER: {
+        "target_cents": 100_000_00,
+        "monthly_contribution_cents": 300_00,
+        "horizon_months": 180,
+        "current_probability": 0.0575,
+        "target_probability": 0.8,
+        "needed_monthly_contribution_cents": 442_00,
+        "contribution_increase_cents": 142_00,
+        "contribution_feasible": True,
+        "probability_with_contribution": 0.8035,
+        "needed_horizon_months": 243,
+        "horizon_extension_months": 63,
+        "needed_goal_year": 2047,
+        "needed_goal_month": 1,
+        "horizon_feasible": True,
+        "probability_with_horizon": 0.8045,
+        "reachable_target_cents": 70_200_00,
+        "target_reduction_cents": 29_800_00,
+        "target_feasible": True,
+        "probability_with_target": 0.8025,
     },
 }
 
@@ -390,3 +412,43 @@ def test_support_prompt_asks_for_the_split() -> None:
     )
     prompt = explainer.generate.call_args.args[0]
     assert "SUPPORT ANSWER" in prompt and "market effect, deposits, fees" in prompt
+
+
+# --- Goal solver ---
+
+
+def test_solver_facts_must_be_consistent() -> None:
+    sample = SAMPLE_FACTS[Topic.SOLVER]
+    with pytest.raises(ValueError, match="new value minus the current"):
+        SolverFacts.model_validate(sample | {"contribution_increase_cents": 100_00})
+
+
+@pytest.mark.parametrize("language", ["en", "fr"])
+def test_solver_fallback_lists_every_feasible_option(language: str) -> None:
+    text = fallback(Topic.SOLVER, parsed(Topic.SOLVER), None, "simple", language)  # type: ignore[arg-type]
+    if language == "en":
+        assert "saving €442 a month" in text.body
+        assert "moving the date to January 2047" in text.body
+        assert "aiming for €70,200" in text.body
+    else:
+        assert "442 €" in text.body and "janvier 2047" in text.body and "70 200 €" in text.body
+
+
+def test_solver_fallback_leaves_out_what_is_out_of_reach() -> None:
+    out_of_reach = {
+        "horizon_feasible": False,
+        "needed_horizon_months": 480,
+        "horizon_extension_months": 300,
+        "needed_goal_year": 2066,
+    }
+    facts = SolverFacts.model_validate(SAMPLE_FACTS[Topic.SOLVER] | out_of_reach)
+    text = fallback(Topic.SOLVER, facts, None, "simple", "en")
+    assert "2066" not in text.body
+    assert "Even 40 years would not be enough" in text.body
+    assert unknown_numbers(text.body, facts) == []
+
+
+def test_solver_prompt_presents_options_without_advice() -> None:
+    prompt = build_prompt(Topic.SOLVER, parsed(Topic.SOLVER), None, "simple", "en", [])
+    assert "never say which to choose" in prompt
+    assert '"needed_monthly_contribution_eur":442.0' in prompt

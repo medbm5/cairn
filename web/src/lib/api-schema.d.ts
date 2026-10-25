@@ -89,6 +89,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/simulations/solve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Solve Simulation
+         * @description The goal solver for the simulator, whose inputs are not a saved goal.
+         */
+        post: operations["solve_simulation_simulations_solve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/glide-path": {
         parameters: {
             query?: never;
@@ -154,6 +174,26 @@ export interface paths {
         get: operations["goal_projection_goals__goal_id__projection_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/goals/{goal_id}/solve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Solve Goal
+         * @description Three ways to reach the target probability, each changing one thing, smallest first.
+         */
+        post: operations["solve_goal_goals__goal_id__solve_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -694,6 +734,11 @@ export interface components {
             /** Amount Cents */
             amount_cents: number;
         };
+        /**
+         * Lever
+         * @enum {string}
+         */
+        Lever: "contribution" | "horizon" | "target";
         /** LlmCallOut */
         LlmCallOut: {
             /**
@@ -980,6 +1025,102 @@ export interface components {
             /** Success Probability */
             success_probability: number | null;
         };
+        /**
+         * SimulationSolveRequest
+         * @description The simulator's inputs, and the steps its sliders move in, so answers land on them.
+         */
+        SimulationSolveRequest: {
+            /** Initial Cents */
+            initial_cents: number;
+            /** Monthly Contribution Cents */
+            monthly_contribution_cents: number;
+            /** Horizon Months */
+            horizon_months: number;
+            profile: components["schemas"]["RiskProfile"];
+            /** Target Cents */
+            target_cents: number;
+            /**
+             * Target Probability
+             * @description The chance of success to aim for.
+             * @default 0.8
+             */
+            target_probability: number;
+            /**
+             * Contribution Step Cents
+             * @default 100
+             */
+            contribution_step_cents: number;
+            /**
+             * Horizon Step Months
+             * @default 1
+             */
+            horizon_step_months: number;
+            /**
+             * Target Step Cents
+             * @default 10000
+             */
+            target_step_cents: number;
+            /**
+             * Max Contribution Cents
+             * @default 100000000
+             */
+            max_contribution_cents: number;
+        };
+        /** SolveRequest */
+        SolveRequest: {
+            /**
+             * Target Probability
+             * @description The chance of success to aim for.
+             * @default 0.8
+             */
+            target_probability: number;
+        };
+        /** SolveResponse */
+        SolveResponse: {
+            /** Target Probability */
+            target_probability: number;
+            /** Current Probability */
+            current_probability: number;
+            /**
+             * Seed
+             * @description Run /simulations with this seed and path count to preview.
+             */
+            seed: number;
+            /** Paths */
+            paths: number;
+            /** Options */
+            options: components["schemas"]["SolverOptionOut"][];
+        };
+        /** SolverOptionOut */
+        SolverOptionOut: {
+            lever: components["schemas"]["Lever"];
+            /**
+             * Value
+             * @description Cents, or months for the horizon.
+             */
+            value: number;
+            /** Current */
+            current: number;
+            /** Delta */
+            delta: number;
+            /**
+             * Relative Change
+             * @description Size of the change relative to the current value.
+             */
+            relative_change: number;
+            /** Success Probability */
+            success_probability: number;
+            /**
+             * Feasible
+             * @description False when even the cap does not reach the target.
+             */
+            feasible: boolean;
+            /**
+             * Target Date
+             * @description For the horizon: the goal date it gives, counted from today.
+             */
+            target_date?: string | null;
+        };
         /** StressTestOut */
         StressTestOut: {
             scenario: components["schemas"]["Scenario"];
@@ -1085,7 +1226,7 @@ export interface components {
          * Topic
          * @enum {string}
          */
-        Topic: "projection" | "allocation" | "glide_path" | "rebalance" | "stress_test" | "ledger_entry" | "support_answer" | "term";
+        Topic: "projection" | "allocation" | "glide_path" | "rebalance" | "stress_test" | "ledger_entry" | "support_answer" | "solver" | "term";
         /** TopicStats */
         TopicStats: {
             /** Topic */
@@ -1253,6 +1394,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SimulationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    solve_simulation_simulations_solve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimulationSolveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SolveResponse"];
                 };
             };
             /** @description Validation Error */
@@ -1467,6 +1641,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GoalProjection"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    solve_goal_goals__goal_id__solve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SolveRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SolveResponse"];
                 };
             };
             /** @description Validation Error */

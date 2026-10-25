@@ -150,6 +150,7 @@ The project was built in small, reviewable slices, one commit each. Full specifi
 | 17 | Demo data, Metabase, Kubernetes | `chore: add demo seed data, Metabase setup and Kubernetes manifests` |
 | 18 | Deployment | `chore(deploy): add Render blueprint and Vercel configuration` |
 | 19 | Documentation | `docs: add architecture, decision records and AI usage notes` |
+| 20 | Goal solver | `feat(solver): add goal solver suggesting contribution, horizon and target adjustments` |
 | 21 | Support view | `feat(support): add support view with client timeline and plain-language answers` |
 
 ## Built with AI

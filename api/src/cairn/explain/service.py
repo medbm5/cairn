@@ -106,6 +106,14 @@ SUPPORT_INSTRUCTIONS = (
     "the amount moved."
 )
 
+# The solver's options are alternatives; presenting one as the thing to do would be advice.
+SOLVER_INSTRUCTIONS = (
+    "SOLVER: FACTS holds three separate options; each changes one thing and on its own lifts the "
+    "chance of success from current_probability to about target_probability. Present them as "
+    "options to compare and never say which to choose. Leave out an option whose _feasible is "
+    "false. Write the new goal date as a month name and the year."
+)
+
 
 def compact_json(value: object) -> str:
     """JSON without spaces or escaped accents: fewer tokens for the same facts."""
@@ -159,6 +167,8 @@ def build_prompt(
     ]
     if topic == Topic.SUPPORT_ANSWER:
         lines.append(SUPPORT_INSTRUCTIONS)
+    elif topic == Topic.SOLVER:
+        lines.append(SOLVER_INSTRUCTIONS)
     return "\n".join(lines)
 
 

@@ -16,6 +16,7 @@ from cairn.explain.facts import (
     LedgerEntryFacts,
     ProjectionFacts,
     RebalanceFacts,
+    SolverFacts,
     StressTestFacts,
     SupportAnswerFacts,
     Topic,
@@ -373,6 +374,82 @@ def _support_answer(f: SupportAnswerFacts, level: Level, lang: Language) -> Text
     return Text(title, body, None, ["volatility", "fees", "ledger"])
 
 
+def _or_list(items: list[str], lang: Language) -> str:
+    word = _pick(lang, "or", "ou")
+    if len(items) <= 1:
+        return "".join(items)
+    return f"{', '.join(items[:-1])} {word} {items[-1]}"
+
+
+def _solver(f: SolverFacts, level: Level, lang: Language) -> Text:
+    aim = percent(f.target_probability, lang)
+    title = _pick(lang, f"Ways to reach {aim}", f"Comment atteindre {aim}")
+    goal_date = f"{MONTH_NAMES[lang][f.needed_goal_month - 1]} {f.needed_goal_year}"
+    options: list[str] = []
+    if f.contribution_feasible:
+        amount = money(f.needed_monthly_contribution_cents, lang)
+        options.append(_pick(lang, f"saving {amount} a month", f"épargner {amount} par mois"))
+    if f.horizon_feasible:
+        options.append(
+            _pick(lang, f"moving the date to {goal_date}", f"repousser l'échéance à {goal_date}")
+        )
+    if f.target_feasible:
+        amount = money(f.reachable_target_cents, lang)
+        options.append(_pick(lang, f"aiming for {amount}", f"viser {amount}"))
+    current = _pick(
+        lang,
+        f"Today your chance of reaching {money(f.target_cents, lang)} is "
+        f"{percent(f.current_probability, lang)}.",
+        f"Aujourd'hui, votre chance d'atteindre {money(f.target_cents, lang)} est de "
+        f"{percent(f.current_probability, lang)}.",
+    )
+    if options:
+        body = (
+            current
+            + " "
+            + _pick(
+                lang,
+                f"Each of these, on its own, would lift it to about {aim}: "
+                f"{_or_list(options, lang)}.",
+                f"Chacune de ces pistes, à elle seule, la porterait à environ {aim} : "
+                f"{_or_list(options, lang)}.",
+            )
+        )
+    else:
+        body = (
+            current
+            + " "
+            + _pick(
+                lang,
+                f"No single change within reach gets it to {aim}; a mix of small changes could.",
+                f"Aucun changement seul ne suffit pour atteindre {aim} ; plusieurs petits "
+                "changements combinés le pourraient.",
+            )
+        )
+    if not f.horizon_feasible:
+        # Out of reach, the horizon option holds the longest horizon tried.
+        longest = years(f.needed_horizon_months, lang)
+        body += " " + _pick(
+            lang,
+            f"Even {longest} would not be enough with the current savings.",
+            f"Même {longest} ne suffiraient pas avec l'épargne actuelle.",
+        )
+    if level == "more_detail":
+        body += " " + _pick(
+            lang,
+            "These are options to compare, not advice. Saving more puts more money to work; a "
+            "later date gives it more time to grow; a smaller target asks less of the markets. "
+            "Each one was tested on the same thousands of possible markets.",
+            "Ce sont des pistes à comparer, pas des conseils. Épargner plus fait travailler plus "
+            "d'argent ; une date plus lointaine lui laisse plus de temps pour croître ; un "
+            "objectif plus petit demande moins aux marchés. Chacune a été testée sur les mêmes "
+            "milliers de marchés possibles.",
+        )
+    return Text(
+        title, body, None, ["success_probability", "monte_carlo", "time_horizon", "compound_growth"]
+    )
+
+
 def _term(term: str, level: Level, lang: Language) -> Text:
     entry = GLOSSARY[term]
     return Text(entry.term[lang], entry.definition[lang], entry.analogy[lang], [term])
@@ -399,6 +476,8 @@ def fallback(
             text = _ledger_entry(facts, level, language)
         case Topic.SUPPORT_ANSWER, SupportAnswerFacts():
             text = _support_answer(facts, level, language)
+        case Topic.SOLVER, SolverFacts():
+            text = _solver(facts, level, language)
         case _:
             raise ValueError(f"No facts of the right kind for topic '{topic}'.")
     # The topic's main glossary term supplies the everyday analogy.

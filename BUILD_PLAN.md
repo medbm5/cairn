@@ -366,6 +366,31 @@ The goal of this layer is to translate finance into everyday language. It is wha
 
 **Commit:** `docs: add architecture, decision records and AI usage notes`
 
+### Slice 20 — Goal solver ("How do I get there?")
+
+Purpose: when a goal is unlikely to be reached, show three concrete ways to get there, each changing a single thing.
+
+**Backend**
+- `api/src/cairn/domain/solver.py`, pure functions, no I/O:
+  - `solve_monthly_contribution(goal_inputs, target_probability=0.8)`: smallest monthly contribution (whole euros) reaching the target probability.
+  - `solve_horizon(goal_inputs, target_probability=0.8)`: smallest horizon in whole months (capped at 40 years) reaching it, contribution unchanged.
+  - `solve_target(goal_inputs, target_probability=0.8)`: largest target (rounded down to 100 €) reachable with the current contribution and horizon.
+- The existing glide-path simulation with a **fixed seed** and 2,000 paths, so results are deterministic and fast; all three levers in under 1 s. With the draws fixed, a path's final value is `initial × A + contribution × B`, so the contribution is found by exact bisection and the target is read straight off the sorted final values. The horizon is bisected over whole months.
+- Each lever returns the new value, the delta versus today, the resulting probability, and `feasible` (false when the cap is hit, e.g. no horizon up to 40 years reaches 80%).
+- `POST /goals/{id}/solve` with an optional `target_probability` (0.5–0.95). The options come back sorted by smallest relative change; the horizon option also carries the goal date it gives. `POST /simulations/solve` does the same for the simulator's unsaved inputs and accepts the sliders' steps, so answers land on them.
+- A `solver` topic in the explainability layer: facts builder, fallback template, number-guard support, and a prompt rule that presents the options without choosing one.
+- Tests: monotonicity (a higher target probability never lowers the required contribution); the returned contribution reaches the target probability and contribution minus 1 € does not; infeasible cases return `feasible=false`; same inputs give identical outputs; performance bound.
+
+**Frontend**
+- On `/goals/:id` (a new "Your projection" panel) and `/simulate`, when the success probability is under 80%, show "How do I get there?".
+- Clicking it: Pebble walks to the chart, then the three options appear as hand-drawn note cards ("Save 450 € a month", "Push the date to June 2033", "Aim for 70 000 €"), each with its resulting probability and how far it moves from today.
+- Hovering or focusing an option previews it: the hatched projection re-sketches with that option applied (same seed and path count as the solver, so the figures match). "Use this plan" updates the goal (or the simulator's sliders).
+- "Explain these options" calls `/explain` with topic `solver`.
+- A spoken summary for screen readers; with reduced motion the cards appear without animation.
+- Tests: option cards render from API data; "Use this plan" sends the right update.
+
+**Commit:** `feat(solver): add goal solver suggesting contribution, horizon and target adjustments`
+
 ### Slice 21 — Support view
 
 Purpose: an internal page for a customer-support agent to understand a client's account quickly and answer "what happened to my money?" questions in plain language.

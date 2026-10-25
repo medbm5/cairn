@@ -184,6 +184,48 @@
         }
       }
     },
+    "/simulations/solve": {
+      "post": {
+        "tags": [
+          "simulations"
+        ],
+        "summary": "Solve Simulation",
+        "description": "The goal solver for the simulator, whose inputs are not a saved goal.",
+        "operationId": "solve_simulation_simulations_solve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulationSolveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolveResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/glide-path": {
       "get": {
         "tags": [
@@ -480,6 +522,66 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GoalProjection"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/goals/{goal_id}/solve": {
+      "post": {
+        "tags": [
+          "goals"
+        ],
+        "summary": "Solve Goal",
+        "description": "Three ways to reach the target probability, each changing one thing, smallest first.",
+        "operationId": "solve_goal_goals__goal_id__solve_post",
+        "parameters": [
+          {
+            "name": "goal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Goal Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/SolveRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolveResponse"
                 }
               }
             }
@@ -1991,6 +2093,15 @@
         ],
         "title": "JournalLineOut"
       },
+      "Lever": {
+        "type": "string",
+        "enum": [
+          "contribution",
+          "horizon",
+          "target"
+        ],
+        "title": "Lever"
+      },
       "LlmCallOut": {
         "properties": {
           "at": {
@@ -2796,6 +2907,192 @@
         ],
         "title": "SimulationResponse"
       },
+      "SimulationSolveRequest": {
+        "properties": {
+          "initial_cents": {
+            "type": "integer",
+            "maximum": 10000000000.0,
+            "minimum": 0.0,
+            "title": "Initial Cents"
+          },
+          "monthly_contribution_cents": {
+            "type": "integer",
+            "maximum": 100000000.0,
+            "minimum": 0.0,
+            "title": "Monthly Contribution Cents"
+          },
+          "horizon_months": {
+            "type": "integer",
+            "maximum": 480.0,
+            "minimum": 12.0,
+            "title": "Horizon Months"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/RiskProfile"
+          },
+          "target_cents": {
+            "type": "integer",
+            "maximum": 10000000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Target Cents"
+          },
+          "target_probability": {
+            "type": "number",
+            "maximum": 0.95,
+            "minimum": 0.5,
+            "title": "Target Probability",
+            "description": "The chance of success to aim for.",
+            "default": 0.8
+          },
+          "contribution_step_cents": {
+            "type": "integer",
+            "maximum": 100000000.0,
+            "minimum": 100.0,
+            "title": "Contribution Step Cents",
+            "default": 100
+          },
+          "horizon_step_months": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "Horizon Step Months",
+            "default": 1
+          },
+          "target_step_cents": {
+            "type": "integer",
+            "maximum": 10000000000.0,
+            "minimum": 10000.0,
+            "title": "Target Step Cents",
+            "default": 10000
+          },
+          "max_contribution_cents": {
+            "type": "integer",
+            "maximum": 100000000.0,
+            "minimum": 100.0,
+            "title": "Max Contribution Cents",
+            "default": 100000000
+          }
+        },
+        "type": "object",
+        "required": [
+          "initial_cents",
+          "monthly_contribution_cents",
+          "horizon_months",
+          "profile",
+          "target_cents"
+        ],
+        "title": "SimulationSolveRequest",
+        "description": "The simulator's inputs, and the steps its sliders move in, so answers land on them."
+      },
+      "SolveRequest": {
+        "properties": {
+          "target_probability": {
+            "type": "number",
+            "maximum": 0.95,
+            "minimum": 0.5,
+            "title": "Target Probability",
+            "description": "The chance of success to aim for.",
+            "default": 0.8
+          }
+        },
+        "type": "object",
+        "title": "SolveRequest"
+      },
+      "SolveResponse": {
+        "properties": {
+          "target_probability": {
+            "type": "number",
+            "title": "Target Probability"
+          },
+          "current_probability": {
+            "type": "number",
+            "title": "Current Probability"
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed",
+            "description": "Run /simulations with this seed and path count to preview."
+          },
+          "paths": {
+            "type": "integer",
+            "title": "Paths"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/SolverOptionOut"
+            },
+            "type": "array",
+            "title": "Options"
+          }
+        },
+        "type": "object",
+        "required": [
+          "target_probability",
+          "current_probability",
+          "seed",
+          "paths",
+          "options"
+        ],
+        "title": "SolveResponse"
+      },
+      "SolverOptionOut": {
+        "properties": {
+          "lever": {
+            "$ref": "#/components/schemas/Lever"
+          },
+          "value": {
+            "type": "integer",
+            "title": "Value",
+            "description": "Cents, or months for the horizon."
+          },
+          "current": {
+            "type": "integer",
+            "title": "Current"
+          },
+          "delta": {
+            "type": "integer",
+            "title": "Delta"
+          },
+          "relative_change": {
+            "type": "number",
+            "title": "Relative Change",
+            "description": "Size of the change relative to the current value."
+          },
+          "success_probability": {
+            "type": "number",
+            "title": "Success Probability"
+          },
+          "feasible": {
+            "type": "boolean",
+            "title": "Feasible",
+            "description": "False when even the cap does not reach the target."
+          },
+          "target_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Date",
+            "description": "For the horizon: the goal date it gives, counted from today."
+          }
+        },
+        "type": "object",
+        "required": [
+          "lever",
+          "value",
+          "current",
+          "delta",
+          "relative_change",
+          "success_probability",
+          "feasible"
+        ],
+        "title": "SolverOptionOut"
+      },
       "StressTestOut": {
         "properties": {
           "scenario": {
@@ -3027,6 +3324,7 @@
           "stress_test",
           "ledger_entry",
           "support_answer",
+          "solver",
           "term"
         ],
         "title": "Topic"

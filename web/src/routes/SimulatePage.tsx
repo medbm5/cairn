@@ -6,15 +6,36 @@ import { Skeleton } from '../components/Skeleton'
 import { Slider } from '../components/Slider'
 import { SketchArrow } from '../components/sketch/SketchArrow'
 import { SketchButton } from '../components/sketch/SketchButton'
+import { useToast } from '../components/Toast'
+import { SolverPanel } from '../features/solver/SolverPanel'
 import { formatDuration, formatMoney, formatPercent } from '../lib/format'
 import { useLanguage, type StringKey } from '../lib/i18n'
-import { useSimulation, type RiskProfile, type SimulationRequest } from '../lib/queries'
+import {
+  solveSimulation,
+  useSimulation,
+  type RiskProfile,
+  type SimulationRequest,
+  type Solution,
+  type SolverOption,
+} from '../lib/queries'
 import { useDebounced, useSettled } from '../lib/useSettled'
 import { PebbleInline } from '../pebble/PebbleInline'
 import { usePebble, usePebbleAnchor, type TourStep } from '../pebble/PebbleProvider'
 import { useTour } from '../pebble/useTour'
 
 const PROFILES: RiskProfile[] = ['prudent', 'moderate', 'balanced', 'dynamic', 'bold']
+// The sliders' steps and caps: the solver's answers land on them, so "Use this plan" fits.
+const MONTHLY_STEP = 25_00
+const MONTHLY_MAX = 3_000_00
+const TARGET_STEP = 5_000_00
+const SOLVE_AT = 0.8
+
+interface Preview {
+  option: SolverOption
+  solution: Solution
+  /** The inputs the options were worked out for; a preview of older inputs is ignored. */
+  key: string
+}
 
 interface Inputs {
   initial: number // cents
@@ -27,6 +48,7 @@ interface Inputs {
 export function SimulatePage() {
   const { t, language } = useLanguage()
   const pebble = usePebble()
+  const toast = useToast()
   const [inputs, setInputs] = useState<Inputs>({
     initial: 5_000_00,
     monthly: 300_00,
@@ -56,7 +78,52 @@ export function SimulatePage() {
     [debounced],
   )
   const simulation = useSimulation(request)
-  const data = simulation.data
+  const inputsKey = JSON.stringify(debounced)
+  const [previewState, setPreview] = useState<Preview | null>(null)
+  const preview = previewState?.key === inputsKey ? previewState : null
+  const previewRequest = useMemo<SimulationRequest | null>(() => {
+    if (!preview) return null
+    const { option, solution } = preview
+    return {
+      ...request,
+      monthly_contribution_cents:
+        option.lever === 'contribution' ? option.value : request.monthly_contribution_cents,
+      horizon_months: option.lever === 'horizon' ? option.value : request.horizon_months,
+      target_cents: option.lever === 'target' ? option.value : request.target_cents,
+      seed: solution.seed,
+      paths: solution.paths,
+    }
+  }, [preview, request])
+  const previewSimulation = useSimulation(previewRequest)
+  // While a solver option is previewed, the chart shows the plan with that option applied.
+  const previewing = previewRequest !== null && previewSimulation.data !== undefined
+  const shownRequest = previewing ? previewRequest : request
+  const data = previewing ? previewSimulation.data : simulation.data
+  const baseChance = simulation.data?.success_probability ?? 0
+
+  const solve = () =>
+    solveSimulation({
+      initial_cents: debounced.initial,
+      monthly_contribution_cents: debounced.monthly,
+      horizon_months: debounced.years * 12,
+      target_cents: debounced.target,
+      profile: debounced.profile,
+      target_probability: SOLVE_AT,
+      contribution_step_cents: MONTHLY_STEP,
+      horizon_step_months: 12,
+      target_step_cents: TARGET_STEP,
+      max_contribution_cents: MONTHLY_MAX,
+    })
+  const apply = (option: SolverOption) => {
+    setPreview(null)
+    setInputs((current) => ({
+      ...current,
+      monthly: option.lever === 'contribution' ? option.value : current.monthly,
+      years: option.lever === 'horizon' ? option.value / 12 : current.years,
+      target: option.lever === 'target' ? option.value : current.target,
+    }))
+    toast.show(t('solverApplied'), 'success')
+  }
 
   const slidersAnchor = usePebbleAnchor('sim-sliders')
   const chartAnchor = usePebbleAnchor('sim-chart')
@@ -83,7 +150,7 @@ export function SimulatePage() {
         p50: formatMoney(data.p50[last], language),
         p10: formatMoney(data.p10[last], language),
         p90: formatMoney(data.p90[last], language),
-        target: formatMoney(request.target_cents ?? 0, language),
+        target: formatMoney(shownRequest.target_cents ?? 0, language),
         chance: formatPercent(chance, language),
       })
     : ''
@@ -94,10 +161,10 @@ export function SimulatePage() {
       topic: 'projection',
       anchorId: 'sim-median',
       facts: {
-        profile: request.profile,
-        target_cents: request.target_cents,
-        horizon_months: request.horizon_months,
-        monthly_contribution_cents: request.monthly_contribution_cents,
+        profile: shownRequest.profile,
+        target_cents: shownRequest.target_cents,
+        horizon_months: shownRequest.horizon_months,
+        monthly_contribution_cents: shownRequest.monthly_contribution_cents,
         p10_cents: data.p10[last],
         p50_cents: data.p50[last],
         p90_cents: data.p90[last],
@@ -170,8 +237,8 @@ export function SimulatePage() {
             label={t('simMonthly')}
             value={inputs.monthly}
             min={0}
-            max={3_000_00}
-            step={25_00}
+            max={MONTHLY_MAX}
+            step={MONTHLY_STEP}
             onChange={set('monthly')}
             format={(v) => formatMoney(v, language)}
           />
@@ -188,7 +255,7 @@ export function SimulatePage() {
             value={inputs.target}
             min={5_000_00}
             max={1_000_000_00}
-            step={5_000_00}
+            step={TARGET_STEP}
             onChange={set('target')}
             format={(v) => formatMoney(v, language)}
           />
@@ -223,7 +290,9 @@ export function SimulatePage() {
           <div ref={chanceAnchor} className="flex flex-wrap items-end justify-between gap-4">
             <p>
               <span className="block text-graphite">
-                {t('simChance', { target: formatMoney(inputs.target, language) })}
+                {t('simChance', {
+                  target: formatMoney(shownRequest.target_cents ?? inputs.target, language),
+                })}
               </span>
               {data ? (
                 <Highlight redrawKey={`${chance}-${settled}`}>
@@ -257,8 +326,12 @@ export function SimulatePage() {
               <ProjectionChart
                 id="simulator"
                 data={data}
-                targetCents={request.target_cents ?? undefined}
-                sketchy={settled && !simulation.isPlaceholderData}
+                targetCents={shownRequest.target_cents ?? undefined}
+                sketchy={
+                  previewing
+                    ? !previewSimulation.isPlaceholderData
+                    : settled && !simulation.isPlaceholderData
+                }
                 draw={{ active: true }}
                 showContributions
                 height={380}
@@ -271,6 +344,18 @@ export function SimulatePage() {
             )}
           </div>
           {data && <p className="sr-only">{summary}</p>}
+          {simulation.data && baseChance < SOLVE_AT && (
+            <SolverPanel
+              key={inputsKey}
+              id="sim-solver"
+              anchorId="sim-chart"
+              solve={solve}
+              onPreview={(option, solution) =>
+                setPreview(option && solution ? { option, solution, key: inputsKey } : null)
+              }
+              onApply={apply}
+            />
+          )}
           <ul className="grid gap-1 text-sm text-graphite sm:grid-cols-2">
             <li className="flex items-baseline gap-2">
               <span

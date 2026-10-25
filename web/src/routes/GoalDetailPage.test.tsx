@@ -25,8 +25,43 @@ const WEIGHTS = {
   money_market: 0.05,
 }
 const months = [0, 12, 24]
+const SIMULATION = {
+  seed: 1,
+  paths: 2000,
+  months,
+  p10: [0, 400_000, 800_000],
+  p25: [0, 450_000, 900_000],
+  p50: [0, 480_000, 980_000],
+  p75: [0, 510_000, 1_050_000],
+  p90: [0, 560_000, 1_150_000],
+  contributed: [0, 480_000, 960_000],
+  success_probability: 0,
+}
+const option = (lever: string, value: number, current: number, target_date: string | null) => ({
+  lever,
+  value,
+  current,
+  delta: value - current,
+  relative_change: Math.abs(value - current) / current,
+  success_probability: 0.8,
+  feasible: true,
+  target_date,
+})
+const SOLUTION = {
+  target_probability: 0.8,
+  current_probability: 0,
+  seed: 2026,
+  paths: 2000,
+  options: [
+    option('horizon', 150, 24, '2039-04-25'),
+    option('contribution', 6_000_00, 400_00, null),
+    option('target', 9_000_00, 150_000_00, null),
+  ],
+}
 
 function respond(url: string, method: string): unknown {
+  if (url.endsWith('/solve')) return SOLUTION
+  if (url.endsWith('/simulations')) return SIMULATION
   if (url.endsWith('/goals') && method === 'GET') return []
   if (url.includes('/deposits'))
     return {
@@ -54,18 +89,7 @@ function respond(url: string, method: string): unknown {
       horizon_months: 24,
       start_cents: 0,
       target_cents: GOAL.target_cents,
-      simulation: {
-        seed: 1,
-        paths: 2000,
-        months,
-        p10: [0, 400_000, 800_000],
-        p25: [0, 450_000, 900_000],
-        p50: [0, 480_000, 980_000],
-        p75: [0, 510_000, 1_050_000],
-        p90: [0, 560_000, 1_150_000],
-        contributed: [0, 480_000, 960_000],
-        success_probability: 0,
-      },
+      simulation: SIMULATION,
     }
   }
   if (url.includes('/glide-path')) {
@@ -169,4 +193,31 @@ test('the goals page invites you to plan a first goal when there are none', asyn
   renderWithProviders(<GoalsPage />)
   expect(await screen.findByText(/No goals yet/)).toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'Plan a new goal' })).toHaveAttribute('href', '/start')
+})
+
+test('the solver suggests options and "Use this plan" updates the goal', async () => {
+  mockReducedMotion(true)
+  window.localStorage.setItem('cairn.tour.goal', 'seen')
+  const calls = stubApi()
+  const user = userEvent.setup()
+  renderWithProviders(
+    <Routes>
+      <Route path="/goals/:id" element={<GoalDetailPage />} />
+    </Routes>,
+    { route: '/goals/1' },
+  )
+
+  await user.click(await screen.findByRole('button', { name: 'How do I get there?' }))
+  expect(await screen.findByText('Push the date to April 2039')).toBeInTheDocument()
+  expect(screen.getByText('Save €6,000 a month')).toBeInTheDocument()
+  expect(screen.getByText('Aim for €9,000')).toBeInTheDocument()
+  expect(calls.some((c) => c.method === 'POST' && c.url.endsWith('/goals/1/solve'))).toBe(true)
+
+  await user.click(
+    screen.getByRole('button', { name: 'Use this plan: Push the date to April 2039' }),
+  )
+  await waitFor(() => expect(calls.some((c) => c.method === 'PATCH')).toBe(true))
+  const patch = calls.find((c) => c.method === 'PATCH')!
+  expect(patch.url).toMatch(/[/]goals[/]1$/)
+  expect(await patch.json()).toEqual({ target_date: '2039-04-25' })
 })

@@ -62,7 +62,7 @@ def _derived(name: str, value: object) -> Iterable[float]:
         euros = abs(value) / 100
         yield from (euros, euros / 1_000, euros / 1_000_000)
     elif isinstance(value, int) and "months" in name:
-        yield from (value, value / 12)
+        yield from (abs(value), abs(value) / 12)
     elif isinstance(value, int):
         yield value
     elif isinstance(value, float):

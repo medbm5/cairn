@@ -6,8 +6,15 @@ from sqlalchemy.orm import Session
 
 from cairn.db import get_session
 from cairn.models import Goal
-from cairn.routers.simulations import simulation_response
-from cairn.schemas import GoalCreate, GoalOut, GoalProjection, GoalUpdate
+from cairn.routers.simulations import simulation_response, solve_response
+from cairn.schemas import (
+    GoalCreate,
+    GoalOut,
+    GoalProjection,
+    GoalUpdate,
+    SolveRequest,
+    SolveResponse,
+)
 from cairn.services import goals as service
 from cairn.services import ledger
 
@@ -70,3 +77,18 @@ def goal_projection(
         target_cents=goal.target_cents,
         simulation=simulation_response(result, paths),
     )
+
+
+@router.post("/{goal_id}/solve")
+def solve_goal(
+    goal: GoalDep, session: SessionDep, body: SolveRequest | None = None
+) -> SolveResponse:
+    """Three ways to reach the target probability, each changing one thing, smallest first."""
+    today = date.today()
+    _, solution = service.solve_goal(
+        goal,
+        start_cents=sum(ledger.holdings(session, goal).values()),
+        today=today,
+        target_probability=(body or SolveRequest()).target_probability,
+    )
+    return solve_response(solution, today)

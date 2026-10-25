@@ -18,6 +18,10 @@ export type Scenario = Schemas['Scenario']
 export type ExplainRequest = Schemas['ExplainRequest']
 export type Explanation = Schemas['Explanation']
 export type Question = Schemas['QuestionOut']
+export type GoalUpdate = Schemas['GoalUpdate']
+export type Solution = Schemas['SolveResponse']
+export type SolverOption = Schemas['SolverOptionOut']
+export type SimulationSolveRequest = Schemas['SimulationSolveRequest']
 
 // --- Profiles and questionnaire ---
 
@@ -107,6 +111,25 @@ export function useProjection(goalId: number) {
         }),
       ),
   })
+}
+
+export function useUpdateGoal(goalId: number) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async (body: GoalUpdate) =>
+      unwrap(await api.PATCH('/goals/{goal_id}', { params: { path: { goal_id: goalId } }, body })),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['goals'] }),
+  })
+}
+
+// --- Goal solver ---
+
+export async function solveGoal(goalId: number): Promise<Solution> {
+  return unwrap(await api.POST('/goals/{goal_id}/solve', { params: { path: { goal_id: goalId } } }))
+}
+
+export async function solveSimulation(body: SimulationSolveRequest): Promise<Solution> {
+  return unwrap(await api.POST('/simulations/solve', { body }))
 }
 
 // --- Ledger ---

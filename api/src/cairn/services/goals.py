@@ -1,4 +1,4 @@
-"""Goal use cases: CRUD for the demo user, and the glide-path projection of a goal."""
+"""Goal use cases: CRUD for the demo user, the glide-path projection of a goal, and the solver."""
 
 from datetime import date
 
@@ -9,6 +9,7 @@ from cairn.domain.dates import months_between
 from cairn.domain.glide_path import glide_path_for
 from cairn.domain.profiles import RiskProfile
 from cairn.domain.simulation import SimulationResult, simulate
+from cairn.domain.solver import GoalInputs, Solution, solve
 from cairn.models import Goal, User
 from cairn.schemas import GoalCreate, GoalUpdate
 
@@ -82,3 +83,18 @@ def project_goal(
         seed=goal.id if seed is None else seed,  # stable per goal unless asked otherwise
     )
     return horizon, result
+
+
+def solve_goal(
+    goal: Goal, *, start_cents: int, today: date, target_probability: float
+) -> tuple[int, Solution]:
+    """What single change would reach the target probability. Returns (horizon, solution)."""
+    horizon = max(months_between(today, goal.target_date), 1)
+    inputs = GoalInputs(
+        initial_cents=start_cents,
+        monthly_contribution_cents=goal.monthly_contribution_cents,
+        horizon_months=horizon,
+        target_cents=goal.target_cents,
+        profile=RiskProfile(goal.profile),
+    )
+    return horizon, solve(inputs, target_probability)

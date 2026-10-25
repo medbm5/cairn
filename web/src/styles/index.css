@@ -176,6 +176,18 @@ h3 {
   border: 0;
 }
 
+/* Solver note cards are laid on the page one after another (instant with reduced motion). */
+@keyframes note-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) rotate(-1.5deg);
+  }
+}
+
+.note-in {
+  animation: note-in 360ms ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

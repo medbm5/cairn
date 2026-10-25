@@ -1,28 +1,40 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
 import { AllocationBar } from '../charts/AllocationBar'
+import { ProjectionChart } from '../charts/ProjectionChart'
 import { Figure } from '../components/Figure'
+import { Highlight } from '../components/Highlight'
 import { Skeleton } from '../components/Skeleton'
 import { SketchButton, SketchLink } from '../components/sketch/SketchButton'
+import { useToast } from '../components/Toast'
 import { DepositForm } from '../features/goals/DepositForm'
 import { LedgerTable } from '../features/goals/LedgerTable'
 import { RebalanceList } from '../features/goals/RebalanceList'
 import { StressTestPanel } from '../features/goals/StressTestPanel'
 import { TimeMachine } from '../features/goals/TimeMachine'
+import { SolverPanel } from '../features/solver/SolverPanel'
 import { ApiError } from '../lib/api'
-import { formatDate, formatDuration } from '../lib/format'
+import { formatDate, formatDuration, formatMoney, formatPercent } from '../lib/format'
 import { useLanguage, type StringKey } from '../lib/i18n'
 import {
+  solveGoal,
   useBalance,
   useEntries,
   useGlidePath,
   useGoal,
   useProjection,
   useRebalances,
+  useSimulation,
+  useUpdateGoal,
+  type SimulationRequest,
+  type Solution,
+  type SolverOption,
 } from '../lib/queries'
 import { PebbleInline } from '../pebble/PebbleInline'
 import { usePebbleAnchor, type TourStep } from '../pebble/PebbleProvider'
 import { useTour } from '../pebble/useTour'
+
+const SOLVE_AT = 0.8
 
 function Panel({
   title,
@@ -53,6 +65,28 @@ export function GoalDetailPage() {
   const rebalances = useRebalances(goalId)
   const projection = useProjection(goalId)
   const glidePath = useGlidePath(goal.data?.profile, projection.data?.horizon_months)
+  const updateGoal = useUpdateGoal(goalId)
+  const toast = useToast()
+
+  // A solver option being previewed: the chart shows the plan with that option applied.
+  const [preview, setPreview] = useState<{ option: SolverOption; solution: Solution } | null>(null)
+  const previewRequest = useMemo<SimulationRequest | null>(() => {
+    if (!preview || !goal.data || !projection.data) return null
+    const { option, solution } = preview
+    return {
+      initial_cents: projection.data.start_cents,
+      monthly_contribution_cents:
+        option.lever === 'contribution' ? option.value : goal.data.monthly_contribution_cents,
+      horizon_months: option.lever === 'horizon' ? option.value : projection.data.horizon_months,
+      target_cents: option.lever === 'target' ? option.value : goal.data.target_cents,
+      profile: goal.data.profile,
+      glide_path: true,
+      seed: solution.seed,
+      paths: solution.paths,
+    }
+  }, [preview, goal.data, projection.data])
+  const previewSimulation = useSimulation(previewRequest)
+  const projectionAnchor = usePebbleAnchor('goal-projection')
 
   const balanceAnchor = usePebbleAnchor('goal-balance')
   const timeAnchor = usePebbleAnchor('goal-time')
@@ -92,6 +126,39 @@ export function GoalDetailPage() {
   const total = balance.data?.total_cents ?? 0
   const startingWeights = glidePath.data?.points[0]?.weights
 
+  const previewing = previewRequest !== null && previewSimulation.data !== undefined
+  const shown = previewing ? previewSimulation.data : projection.data?.simulation
+  const shownTarget = previewRequest?.target_cents ?? g.target_cents
+  const chance = shown?.success_probability ?? 0
+  const lastIndex = shown ? shown.months.length - 1 : 0
+  const projectionSummary = shown
+    ? t('chartSummary', {
+        years: formatDuration(shown.months[lastIndex], language),
+        p50: formatMoney(shown.p50[lastIndex], language),
+        p10: formatMoney(shown.p10[lastIndex], language),
+        p90: formatMoney(shown.p90[lastIndex], language),
+        target: formatMoney(shownTarget, language),
+        chance: formatPercent(chance, language),
+      })
+    : ''
+  const baseChance = projection.data?.simulation.success_probability ?? 0
+
+  const applyPlan = (option: SolverOption) => {
+    const change =
+      option.lever === 'contribution'
+        ? { monthly_contribution_cents: option.value }
+        : option.lever === 'horizon'
+          ? { target_date: option.target_date! }
+          : { target_cents: option.value }
+    updateGoal.mutate(change, {
+      onSuccess: () => {
+        setPreview(null)
+        toast.show(t('solverApplied'), 'success')
+      },
+      onError: () => toast.show(t('solverApplyError'), 'error'),
+    })
+  }
+
   return (
     <div className="flex flex-col gap-12">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -114,6 +181,46 @@ export function GoalDetailPage() {
           {t('showMeAround')}
         </SketchButton>
       </header>
+
+      <Panel title={t('projectionTitle')} anchor={projectionAnchor} id="goal-projection">
+        {shown ? (
+          <>
+            <p>
+              <span className="block text-graphite">
+                {t('simChance', { target: formatMoney(shownTarget, language) })}
+              </span>
+              <Highlight redrawKey={`${chance}`}>
+                <Figure kind="percent" value={chance} className="text-4xl font-bold" />
+              </Highlight>
+            </p>
+            <ProjectionChart
+              id={`goal-${goalId}-projection`}
+              data={shown}
+              targetCents={shownTarget}
+              sketchy={!previewSimulation.isFetching}
+              showContributions
+              height={320}
+              summary={projectionSummary}
+            />
+            <p className="sr-only">{projectionSummary}</p>
+            {baseChance < SOLVE_AT && (
+              <SolverPanel
+                key={`${g.monthly_contribution_cents}-${g.target_date}-${g.target_cents}`}
+                id="goal-solver"
+                anchorId="goal-projection"
+                solve={() => solveGoal(goalId)}
+                onPreview={(option, solution) =>
+                  setPreview(option && solution ? { option, solution } : null)
+                }
+                onApply={applyPlan}
+                applying={updateGoal.isPending}
+              />
+            )}
+          </>
+        ) : (
+          <Skeleton id="projection-loading" lines={4} />
+        )}
+      </Panel>
 
       <div className="grid gap-12 lg:grid-cols-12">
         <div className="flex flex-col gap-12 lg:col-span-5">

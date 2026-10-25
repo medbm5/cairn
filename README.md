@@ -28,6 +28,9 @@ https://github.com/user-attachments/assets/013fcb3c-03d3-4482-b189-a43bef5621b6
   reshape, with your chance of reaching the goal.
 - **Ask what anything means.** Pebble, the robot guide, explains every word and every number in
   plain French or English.
+- **Find a way there.** When the chance is low, "How do I get there?" shows three single
+  changes that would reach 80%: save more, push the date, or aim a little lower. Preview each
+  on the chart and use it in one click.
 - **Travel through time.** Drag through the years and watch your money move from growth to
   safety as the date gets closer.
 - **Replay a crisis.** See how your savings would have behaved in 2008, 2020 and 2022.

@@ -4,6 +4,7 @@ The UI sends facts it received from the engine's endpoints; the builders below m
 objects from engine outputs on the server side (used by tests and the seed script).
 """
 
+from datetime import date
 from enum import StrEnum
 from typing import Literal, Self
 
@@ -12,6 +13,7 @@ from pydantic import BaseModel, Field, model_validator
 from cairn.domain.glide_path import PRESERVATION_MIX
 from cairn.domain.profiles import PROFILES, AssetClass, RiskProfile, equity_share
 from cairn.domain.simulation import SimulationResult
+from cairn.domain.solver import GoalInputs, Lever, Solution
 from cairn.domain.stress import Replay, Scenario
 
 Fraction = float  # 0.25 means 25%
@@ -25,6 +27,7 @@ class Topic(StrEnum):
     STRESS_TEST = "stress_test"
     LEDGER_ENTRY = "ledger_entry"
     SUPPORT_ANSWER = "support_answer"
+    SOLVER = "solver"
     TERM = "term"
 
 
@@ -109,6 +112,46 @@ class SupportAnswerFacts(BaseModel):
         return self
 
 
+class SolverFacts(BaseModel):
+    """The goal solver's three options, each changing one thing on its own.
+
+    `needed_monthly_contribution_cents` and `needed_horizon_months` are what it takes to reach
+    `target_probability`; `reachable_target_cents` is the largest target it reaches unchanged.
+    A lever that is out of reach (no amount, or no date within 40 years) is not feasible.
+    """
+
+    target_cents: int = Field(ge=0)
+    monthly_contribution_cents: int = Field(ge=0)
+    horizon_months: int = Field(ge=1, le=600)
+    current_probability: Fraction = Field(ge=0, le=1)
+    target_probability: Fraction = Field(ge=0.5, le=0.95)
+    needed_monthly_contribution_cents: int = Field(ge=0)
+    contribution_increase_cents: int
+    contribution_feasible: bool
+    probability_with_contribution: Fraction = Field(ge=0, le=1)
+    needed_horizon_months: int = Field(ge=1, le=600)
+    horizon_extension_months: int
+    needed_goal_year: int = Field(ge=2000, le=2100)
+    needed_goal_month: int = Field(ge=1, le=12)
+    horizon_feasible: bool
+    probability_with_horizon: Fraction = Field(ge=0, le=1)
+    reachable_target_cents: int = Field(ge=0)
+    target_reduction_cents: int
+    target_feasible: bool
+    probability_with_target: Fraction = Field(ge=0, le=1)
+
+    @model_validator(mode="after")
+    def check_differences(self) -> Self:
+        if (
+            self.contribution_increase_cents
+            != self.needed_monthly_contribution_cents - self.monthly_contribution_cents
+            or self.horizon_extension_months != self.needed_horizon_months - self.horizon_months
+            or self.target_reduction_cents != self.target_cents - self.reachable_target_cents
+        ):
+            raise ValueError("Each change must equal the new value minus the current one.")
+        return self
+
+
 FactsModel = (
     ProjectionFacts
     | AllocationFacts
@@ -117,6 +160,7 @@ FactsModel = (
     | StressTestFacts
     | LedgerEntryFacts
     | SupportAnswerFacts
+    | SolverFacts
 )
 
 FACT_MODELS: dict[Topic, type[FactsModel]] = {
@@ -127,6 +171,7 @@ FACT_MODELS: dict[Topic, type[FactsModel]] = {
     Topic.STRESS_TEST: StressTestFacts,
     Topic.LEDGER_ENTRY: LedgerEntryFacts,
     Topic.SUPPORT_ANSWER: SupportAnswerFacts,
+    Topic.SOLVER: SolverFacts,
 }
 
 
@@ -176,4 +221,33 @@ def stress_test_facts(
         max_drawdown=plain.max_drawdown,
         max_drawdown_rebalanced=rebalanced.max_drawdown,
         months_to_recover=plain.months_to_recover,
+    )
+
+
+def solver_facts(solution: Solution, inputs: GoalInputs, goal_date: date) -> SolverFacts:
+    """`goal_date` is the date the horizon option gives (today plus its months)."""
+    by_lever = {option.lever: option for option in solution.options}
+    contribution = by_lever[Lever.CONTRIBUTION]
+    horizon = by_lever[Lever.HORIZON]
+    target = by_lever[Lever.TARGET]
+    return SolverFacts(
+        target_cents=inputs.target_cents,
+        monthly_contribution_cents=inputs.monthly_contribution_cents,
+        horizon_months=inputs.horizon_months,
+        current_probability=solution.current_probability,
+        target_probability=solution.target_probability,
+        needed_monthly_contribution_cents=contribution.value,
+        contribution_increase_cents=contribution.delta,
+        contribution_feasible=contribution.feasible,
+        probability_with_contribution=contribution.success_probability,
+        needed_horizon_months=horizon.value,
+        horizon_extension_months=horizon.delta,
+        needed_goal_year=goal_date.year,
+        needed_goal_month=goal_date.month,
+        horizon_feasible=horizon.feasible,
+        probability_with_horizon=horizon.success_probability,
+        reachable_target_cents=target.value,
+        target_reduction_cents=-target.delta,
+        target_feasible=target.feasible,
+        probability_with_target=target.success_probability,
     )

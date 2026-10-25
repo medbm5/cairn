@@ -62,6 +62,25 @@ def weights_by_month(allocation: Allocation, horizon_months: int) -> FloatArray:
     return np.array([[row[a] for a in ASSET_CLASSES] for row in rows])
 
 
+def growth_factors(
+    *,
+    horizon_months: int,
+    allocation: Allocation,
+    paths: int,
+    seed: int,
+    assumptions: Mapping[AssetClass, AssetAssumption] = ASSUMPTIONS,
+) -> FloatArray:
+    """Portfolio growth multipliers of shape (horizon_months, paths); row t applies in month t+1."""
+    rng = np.random.default_rng(seed)
+    mu, cov = monthly_log_moments(assumptions)
+    weights = weights_by_month(allocation, horizon_months)
+    port_mean = weights @ mu  # (months,)
+    port_std = np.sqrt(np.einsum("ti,ij,tj->t", weights, cov, weights))  # (months,)
+    shocks = rng.standard_normal((horizon_months, paths))
+    growth: FloatArray = np.exp(port_mean[:, None] + port_std[:, None] * shocks)
+    return growth
+
+
 def simulate(
     *,
     initial_cents: int,
@@ -75,15 +94,13 @@ def simulate(
 ) -> SimulationResult:
     if seed is None:
         seed = int(np.random.SeedSequence().generate_state(1)[0])
-    rng = np.random.default_rng(seed)
-
-    mu, cov = monthly_log_moments(assumptions)
-    weights = weights_by_month(allocation, horizon_months)
-    port_mean = weights @ mu  # (months,)
-    port_std = np.sqrt(np.einsum("ti,ij,tj->t", weights, cov, weights))  # (months,)
-
-    shocks = rng.standard_normal((horizon_months, paths))
-    growth = np.exp(port_mean[:, None] + port_std[:, None] * shocks)  # (months, paths)
+    growth = growth_factors(
+        horizon_months=horizon_months,
+        allocation=allocation,
+        paths=paths,
+        seed=seed,
+        assumptions=assumptions,
+    )
 
     values = np.empty((horizon_months + 1, paths))
     values[0] = initial_cents

@@ -15,6 +15,7 @@ from pydantic import (
 
 from cairn.domain.dates import months_between
 from cairn.domain.profiles import AssetClass, RiskProfile
+from cairn.domain.solver import DEFAULT_TARGET_PROBABILITY, Lever
 from cairn.domain.stress import Scenario
 from cairn.explain.facts import FACT_MODELS, FactsModel, Topic
 from cairn.explain.glossary import GLOSSARY
@@ -170,6 +171,53 @@ class GoalProjection(BaseModel):
     start_cents: int
     target_cents: int
     simulation: SimulationResponse
+
+
+# --- Goal solver ---
+
+TargetProbability = Annotated[
+    float, Field(ge=0.5, le=0.95, description="The chance of success to aim for.")
+]
+
+
+class SolveRequest(BaseModel):
+    target_probability: TargetProbability = DEFAULT_TARGET_PROBABILITY
+
+
+class SimulationSolveRequest(BaseModel):
+    """The simulator's inputs, and the steps its sliders move in, so answers land on them."""
+
+    initial_cents: int = Field(ge=0, le=MAX_AMOUNT_CENTS)
+    monthly_contribution_cents: int = Field(ge=0, le=MAX_MONTHLY_CENTS)
+    horizon_months: int = Field(ge=12, le=480)
+    profile: RiskProfile
+    target_cents: int = Field(gt=0, le=MAX_AMOUNT_CENTS)
+    target_probability: TargetProbability = DEFAULT_TARGET_PROBABILITY
+    contribution_step_cents: int = Field(default=100, ge=100, le=MAX_MONTHLY_CENTS)
+    horizon_step_months: int = Field(default=1, ge=1, le=12)
+    target_step_cents: int = Field(default=100_00, ge=100_00, le=MAX_AMOUNT_CENTS)
+    max_contribution_cents: int = Field(default=MAX_MONTHLY_CENTS, ge=100, le=MAX_MONTHLY_CENTS)
+
+
+class SolverOptionOut(BaseModel):
+    lever: Lever
+    value: int = Field(description="Cents, or months for the horizon.")
+    current: int
+    delta: int
+    relative_change: float = Field(description="Size of the change relative to the current value.")
+    success_probability: float
+    feasible: bool = Field(description="False when even the cap does not reach the target.")
+    target_date: date | None = Field(
+        default=None, description="For the horizon: the goal date it gives, counted from today."
+    )
+
+
+class SolveResponse(BaseModel):
+    target_probability: float
+    current_probability: float
+    seed: int = Field(description="Run /simulations with this seed and path count to preview.")
+    paths: int
+    options: list[SolverOptionOut]
 
 
 # --- Ledger ---
