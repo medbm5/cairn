@@ -238,8 +238,8 @@ export const en = {
   obsLink: 'Observability (internal demo)',
   obsTitle: 'Observability',
   obsIntro:
-    'What the API and Pebble have been doing since the server last started: traffic, AI usage and cost, and the log trail.',
-  obsSince: 'Since {date}',
+    'What the API and Pebble have been doing over the last 24 hours: traffic, AI usage and cost, and the log trail. Kept in the database for 7 days.',
+  obsSince: 'Last 24 hours, since {date}',
   obsAutoRefresh: 'Refresh every 5 seconds',
   obsError: 'The numbers could not be loaded. Try again in a moment.',
   obsRequests: 'API requests',
@@ -524,8 +524,8 @@ export const fr: Strings = {
   obsLink: 'Observabilité (démo interne)',
   obsTitle: 'Observabilité',
   obsIntro:
-    "Ce que l'API et Pebble ont fait depuis le dernier démarrage du serveur : trafic, usage et coût de l'IA, et la trace des journaux.",
-  obsSince: 'Depuis le {date}',
+    "Ce que l'API et Pebble ont fait ces dernières 24 heures : trafic, usage et coût de l'IA, et la trace des journaux. Conservé 7 jours en base de données.",
+  obsSince: 'Dernières 24 heures, depuis le {date}',
   obsAutoRefresh: 'Actualiser toutes les 5 secondes',
   obsError: "Les chiffres n'ont pas pu être chargés. Réessayez dans un instant.",
   obsRequests: 'Requêtes API',

@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     # The cheapest current model is plenty for rephrasing facts (see ADR 0003).
     openai_model: str = "gpt-5-nano"
+    # How often buffered observability events are written to the database; 0 turns the background
+    # writer off (tests), and the stats endpoint still writes what is pending before it reads.
+    observability_flush_seconds: float = 5.0
+    observability_retention_days: int = 7
     # Git SHA of the deployed code; Render sets RENDER_GIT_COMMIT automatically.
     release: str = Field(
         default="", validation_alias=AliasChoices("RELEASE", "GIT_SHA", "RENDER_GIT_COMMIT")

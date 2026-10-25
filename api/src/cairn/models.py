@@ -1,13 +1,34 @@
 """SQLAlchemy models. Money is always stored as integer cents."""
 
 from datetime import date, datetime
+from typing import Any
 
-from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import (
+    JSON,
+    BigInteger,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    UniqueConstraint,
+    func,
+)
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from cairn.db import Base
 
-__all__ = ["Account", "Base", "Goal", "JournalEntry", "JournalLine", "User"]
+__all__ = [
+    "Account",
+    "Base",
+    "Goal",
+    "JournalEntry",
+    "JournalLine",
+    "ObservabilityEvent",
+    "User",
+]
 
 
 class User(Base):
@@ -95,3 +116,22 @@ class JournalLine(Base):
 
     entry: Mapped[JournalEntry] = relationship(back_populates="lines")
     account: Mapped[Account] = relationship(back_populates="lines")
+
+
+class ObservabilityEvent(Base):
+    """One observed event: an API request, an AI call, an explanation's outcome or a log line.
+
+    The fields differ by kind, so they are kept as JSON; `at` and `kind` are columns because every
+    query filters on them. Old events are pruned (see cairn.observability).
+    """
+
+    __tablename__ = "observability_events"
+    __table_args__ = (Index("ix_observability_events_kind_at", "kind", "at"),)
+
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True
+    )
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    kind: Mapped[str] = mapped_column(String(20))
+    request_id: Mapped[str | None] = mapped_column(String(64))
+    data: Mapped[dict[str, Any]] = mapped_column(JSON().with_variant(JSONB(), "postgresql"))

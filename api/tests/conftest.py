@@ -7,6 +7,9 @@ in-memory SQLite database so the suite runs anywhere.
 import os
 from collections.abc import Iterator
 
+# Tests write observability events through the request's (test) session, never in the background.
+os.environ["OBSERVABILITY_FLUSH_SECONDS"] = "0"
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, StaticPool, create_engine

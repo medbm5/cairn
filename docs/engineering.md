@@ -50,11 +50,16 @@ flowchart LR
 
 ## Observability
 
-- **The `/observability` page** shows, since the API last started: request counts, server error
-  rate and latency per route; where each explanation came from (AI, cache or template, and why);
-  tokens and estimated cost per topic; and a trail of recent requests and log lines that can be
-  filtered to a single request ID. It reads `GET /observability/stats`, which keeps everything in
-  bounded in-memory buffers: free, but reset on every restart.
+- **The `/observability` page** shows the last 24 hours: request counts, server error rate and
+  latency per route; where each explanation came from (AI, cache or template, and why); tokens
+  and estimated cost per topic; and a trail of recent requests and log lines that can be filtered
+  to a single request ID. It reads `GET /observability/stats`.
+- **Storage:** events are buffered in memory (so recording never slows a request) and written to
+  the `observability_events` table by a background thread every
+  `OBSERVABILITY_FLUSH_SECONDS` (5 s); the stats endpoint also writes what is pending before it
+  reads. A restart loses at most those few seconds. Events older than
+  `OBSERVABILITY_RETENTION_DAYS` (7) are pruned hourly. If the database is down, events are
+  dropped and a warning is logged: observability never takes the API down.
 - **Logs** are JSON lines (structlog). Every request gets an `X-Request-ID` (reused if the client
   sends one), returned in the response and attached to every log line.
 - **Sentry** captures errors from the API and the web app when `SENTRY_DSN` / `VITE_SENTRY_DSN`

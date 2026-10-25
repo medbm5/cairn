@@ -380,7 +380,7 @@ class RequestOut(BaseModel):
     path: str
     status: int
     duration_ms: float
-    request_id: str
+    request_id: str | None
 
 
 class ApiStats(BaseModel):
@@ -437,7 +437,7 @@ class LlmStats(BaseModel):
 
 
 class LogLineOut(BaseModel):
-    at: str
+    at: datetime
     level: str
     event: str
     logger: str | None

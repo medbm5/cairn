@@ -29,7 +29,7 @@ simulation, the glide path, the ledger) harder to review.
   from that timeline). The page is linked discreetly from the footer as an internal demo.
 - The **observability page** (`GET /observability/stats` and `/observability`) is open in the
   same way. It shows request paths, status codes, timings, token counts and log events, never
-  request bodies, support questions or keys.
+  request bodies, support questions or keys. These events are stored for seven days.
 - Abuse is limited by validation caps on every amount and horizon, by one shared rate limit on
   the endpoints that can call the model (`/explain` and `/support/clients/{id}/ask`), and by the
   fact that nothing stored is sensitive.

@@ -759,7 +759,10 @@ export interface components {
         };
         /** LogLineOut */
         LogLineOut: {
-            /** At */
+            /**
+             * At
+             * Format: date-time
+             */
             at: string;
             /** Level */
             level: string;
@@ -899,7 +902,7 @@ export interface components {
             /** Duration Ms */
             duration_ms: number;
             /** Request Id */
-            request_id: string;
+            request_id: string | null;
         };
         /**
          * RiskProfile

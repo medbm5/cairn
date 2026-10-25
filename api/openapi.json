@@ -2177,6 +2177,7 @@
         "properties": {
           "at": {
             "type": "string",
+            "format": "date-time",
             "title": "At"
           },
           "level": {
@@ -2555,7 +2556,14 @@
             "title": "Duration Ms"
           },
           "request_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Request Id"
           }
         },

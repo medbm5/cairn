@@ -1,18 +1,24 @@
-"""In-process observability for the demo: recent API requests, LLM calls and log lines.
+"""Observability for the demo: API requests, AI calls, explanation outcomes and log lines.
 
-Everything lives in bounded in-memory buffers, so it covers the time since the API last started
-(free hosting restarts it often) and costs nothing to run. Production would ship the same events
-to a metrics and log backend instead; Sentry already receives errors.
+Events are first kept in a small in-memory buffer, so recording never slows a request down. A
+background thread writes them to the `observability_events` table every few seconds, and the stats
+endpoint writes whatever is still pending before it reads. The page then shows the last 24 hours
+from the database, so a restart loses at most a few seconds. Events older than the retention
+period are pruned. Sentry still receives errors.
 """
 
 import threading
 from collections import Counter, deque
-from collections.abc import Iterable, Mapping, MutableMapping
-from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime
+from collections.abc import Callable, Iterable, Mapping, MutableMapping
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import structlog
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
+
+from cairn.models import ObservabilityEvent
 
 # Estimated prices in US dollars per million tokens (input, output). Check OpenAI's pricing page:
 # these change, and an unknown model simply shows no cost.
@@ -26,6 +32,12 @@ MODEL_PRICES_USD_PER_M: dict[str, tuple[float, float]] = {
 # Log fields that are noise in the trail, already shown elsewhere, or too long to keep.
 _LOG_SKIP = {"event", "level", "timestamp", "request_id", "logger"}
 _LOG_VALUE_LIMIT = 200
+# Each request already has its own record; storing its log line too would double the writes.
+_LOG_EVENTS_NOT_KEPT = {"request"}
+
+WINDOW = timedelta(hours=24)
+MAX_PENDING = 5_000  # if the database is down, the oldest unsaved events are dropped
+PRUNE_EVERY = timedelta(hours=1)
 
 
 def _now() -> datetime:
@@ -47,7 +59,7 @@ class RequestRecord:
     path: str
     status: int
     duration_ms: float
-    request_id: str
+    request_id: str | None
 
 
 @dataclass(frozen=True)
@@ -78,7 +90,7 @@ class ExplanationRecord:
 
 @dataclass(frozen=True)
 class LogLine:
-    at: str
+    at: datetime
     level: str
     event: str
     logger: str | None
@@ -86,51 +98,55 @@ class LogLine:
     fields: dict[str, Any]
 
 
-@dataclass
+Record = RequestRecord | LlmCall | ExplanationRecord | LogLine
+
+KINDS: dict[str, type[Record]] = {
+    "request": RequestRecord,
+    "llm_call": LlmCall,
+    "explanation": ExplanationRecord,
+    "log": LogLine,
+}
+KIND_OF: dict[type[Record], str] = {cls: kind for kind, cls in KINDS.items()}
+
+
+def to_row(record: Record) -> ObservabilityEvent:
+    data = {k: v for k, v in asdict(record).items() if k not in ("at", "request_id")}
+    return ObservabilityEvent(
+        at=record.at, kind=KIND_OF[type(record)], request_id=record.request_id, data=data
+    )
+
+
+def from_row(row: ObservabilityEvent) -> Record:
+    at = row.at if row.at.tzinfo else row.at.replace(tzinfo=UTC)  # SQLite drops the zone
+    return KINDS[row.kind](at=at, request_id=row.request_id, **row.data)
+
+
 class Recorder:
-    max_requests: int = 2_000
-    max_llm_calls: int = 500
-    max_explanations: int = 1_000
-    max_logs: int = 300
-    started_at: datetime = field(default_factory=_now)
+    """Events waiting to be written to the database."""
 
-    def __post_init__(self) -> None:
+    def __init__(self) -> None:
         self._lock = threading.Lock()
-        self.requests: deque[RequestRecord] = deque(maxlen=self.max_requests)
-        self.llm_calls: deque[LlmCall] = deque(maxlen=self.max_llm_calls)
-        self.explanations: deque[ExplanationRecord] = deque(maxlen=self.max_explanations)
-        self.logs: deque[LogLine] = deque(maxlen=self.max_logs)
+        self._pending: deque[Record] = deque(maxlen=MAX_PENDING)
+        self.last_prune = datetime.min.replace(tzinfo=UTC)
 
-    def add(self, record: RequestRecord | LlmCall | ExplanationRecord | LogLine) -> None:
+    def add(self, record: Record) -> None:
         with self._lock:
-            match record:
-                case RequestRecord():
-                    self.requests.append(record)
-                case LlmCall():
-                    self.llm_calls.append(record)
-                case ExplanationRecord():
-                    self.explanations.append(record)
-                case LogLine():
-                    self.logs.append(record)
+            self._pending.append(record)
 
-    def snapshot(
-        self,
-    ) -> tuple[list[RequestRecord], list[LlmCall], list[ExplanationRecord], list[LogLine]]:
+    def pending(self) -> list[Record]:
         with self._lock:
-            return (
-                list(self.requests),
-                list(self.llm_calls),
-                list(self.explanations),
-                list(self.logs),
-            )
+            return list(self._pending)
+
+    def drain(self) -> list[Record]:
+        with self._lock:
+            records = list(self._pending)
+            self._pending.clear()
+            return records
 
     def reset(self) -> None:
         with self._lock:
-            self.requests.clear()
-            self.llm_calls.clear()
-            self.explanations.clear()
-            self.logs.clear()
-            self.started_at = _now()
+            self._pending.clear()
+            self.last_prune = datetime.min.replace(tzinfo=UTC)
 
 
 recorder = Recorder()
@@ -189,18 +205,88 @@ def _short(value: object) -> object:
 def capture_log(
     _logger: object, _method: str, event_dict: MutableMapping[str, Any]
 ) -> MutableMapping[str, Any]:
-    """structlog processor: keep a copy of every log line for the log trail."""
-    recorder.add(
-        LogLine(
-            at=str(event_dict.get("timestamp", _now().isoformat())),
-            level=str(event_dict.get("level", "info")),
-            event=str(event_dict.get("event", "")),
-            logger=event_dict.get("logger"),
-            request_id=event_dict.get("request_id"),
-            fields={k: _short(v) for k, v in event_dict.items() if k not in _LOG_SKIP},
+    """structlog processor: keep a copy of log lines for the log trail."""
+    event = str(event_dict.get("event", ""))
+    if event not in _LOG_EVENTS_NOT_KEPT:
+        recorder.add(
+            LogLine(
+                at=_now(),
+                level=str(event_dict.get("level", "info")),
+                event=event,
+                logger=event_dict.get("logger"),
+                request_id=event_dict.get("request_id"),
+                fields={k: _short(v) for k, v in event_dict.items() if k not in _LOG_SKIP},
+            )
         )
-    )
     return event_dict
+
+
+# --- Writing to the database ---
+
+
+def flush(session: Session, retention_days: int = 7) -> int:
+    """Write pending events, and prune old ones about once an hour. Returns how many were written.
+
+    On a database error the events are dropped rather than retried forever: observability must
+    never take the API down with it.
+    """
+    records = recorder.drain()
+    now = _now()
+    prune = now - recorder.last_prune >= PRUNE_EVERY
+    if not records and not prune:
+        return 0
+    try:
+        session.add_all([to_row(r) for r in records])
+        if prune:
+            cutoff = now - timedelta(days=retention_days)
+            session.execute(delete(ObservabilityEvent).where(ObservabilityEvent.at < cutoff))
+            recorder.last_prune = now
+        session.commit()
+    except Exception:
+        session.rollback()
+        structlog.get_logger("cairn.observability").warning(
+            "observability.flush_failed", dropped=len(records)
+        )
+        return 0
+    return len(records)
+
+
+class Flusher:
+    """A daemon thread that writes pending events every `interval` seconds."""
+
+    def __init__(
+        self, session_factory: Callable[[], Session], interval: float, retention_days: int
+    ) -> None:
+        self._session_factory = session_factory
+        self._interval = interval
+        self._retention_days = retention_days
+        self._stop = threading.Event()
+        self._thread = threading.Thread(target=self._run, name="observability-flush", daemon=True)
+
+    def start(self) -> None:
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop.set()
+        self._thread.join(timeout=self._interval + 5)
+        self._flush()  # whatever arrived during shutdown
+
+    def _flush(self) -> None:
+        with self._session_factory() as session:
+            flush(session, self._retention_days)
+
+    def _run(self) -> None:
+        while not self._stop.wait(self._interval):
+            self._flush()
+
+
+def load(session: Session, since: datetime) -> list[Record]:
+    rows = session.scalars(
+        select(ObservabilityEvent)
+        .where(ObservabilityEvent.at >= since)
+        .order_by(ObservabilityEvent.at, ObservabilityEvent.id)
+    )
+    return [from_row(row) for row in rows]
 
 
 # --- Summaries ---
@@ -268,14 +354,23 @@ def _topic_rows(
     return sorted(topics.values(), key=lambda r: -r["explanations"])
 
 
-def _jsonable(record: object) -> dict[str, Any]:
-    data = asdict(record)  # type: ignore[call-overload]
+def _jsonable(record: Record) -> dict[str, Any]:
+    data = asdict(record)
     return {k: v.isoformat() if isinstance(v, datetime) else v for k, v in data.items()}
 
 
-def stats(model: str, ai_enabled: bool, recent: int = 50) -> dict[str, Any]:
-    """Everything the observability page shows, computed from the buffers."""
-    requests, calls, explanations, logs = recorder.snapshot()
+def stats(
+    session: Session, model: str, ai_enabled: bool, recent: int = 50, retention_days: int = 7
+) -> dict[str, Any]:
+    """Everything the observability page shows, for the last 24 hours, read from the database."""
+    flush(session, retention_days)
+    since = _now() - WINDOW
+    records = load(session, since)
+    requests = [r for r in records if isinstance(r, RequestRecord)]
+    calls = [r for r in records if isinstance(r, LlmCall)]
+    explanations = [r for r in records if isinstance(r, ExplanationRecord)]
+    logs = [r for r in records if isinstance(r, LogLine)]
+
     durations = [r.duration_ms for r in requests]
     statuses: Mapping[str, int] = Counter(f"{r.status // 100}xx" for r in requests)
     sources = Counter(e.source for e in explanations)
@@ -283,7 +378,7 @@ def stats(model: str, ai_enabled: bool, recent: int = 50) -> dict[str, Any]:
     ok_calls = [c for c in calls if c.ok]
     costs = [c.cost_usd for c in calls if c.cost_usd is not None]
     return {
-        "since": recorder.started_at.isoformat(),
+        "since": since.isoformat(),
         "api": {
             "requests": len(requests),
             "status_counts": dict(statuses),
