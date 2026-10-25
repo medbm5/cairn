@@ -27,3 +27,6 @@ coverage/
 !.vscode/extensions.json
 .DS_Store
 Thumbs.db
+
+# /brag video workspace (render tools, caches); the finished video lives in docs/demo/
+brag-output*/

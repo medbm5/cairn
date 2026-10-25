@@ -17,8 +17,9 @@
 
 ## Demo video
 
-_Coming soon._
-<!-- Record a short walkthrough, then replace this line with a link or an embedded video. -->
+[![Watch the 22-second demo: Pebble sketches a savings plan, a slider lifts the chance of reaching €100,000 from 5% to 83%, and the ledger adds up to the cent](docs/demo/cairn-demo.jpg)](docs/demo/cairn-demo.mp4)
+
+<sub>Click the picture to play the video (22 seconds, with sound).</sub>
 
 ## What you can do
 
