@@ -124,6 +124,29 @@ h3 {
   outline: none;
 }
 
+/* The invisible native range input under a hand-drawn slider: a thumb of known width, so the
+   drawing (components/Slider.tsx) lines up with where the pointer grabs. */
+.sketch-range {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+  background: transparent;
+  touch-action: pan-y;
+}
+
+.sketch-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 32px;
+}
+
+.sketch-range::-moz-range-thumb {
+  width: 24px;
+  height: 32px;
+  border: 0;
+}
+
 .sketch-ring {
   opacity: 0;
 }

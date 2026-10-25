@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { AllocationBar } from '../../charts/AllocationBar'
 import { Figure } from '../../components/Figure'
 import { Slider } from '../../components/Slider'
+import { blendWeights } from '../../lib/assets'
 import { formatDate, formatMoney } from '../../lib/format'
 import { useLanguage } from '../../lib/i18n'
 import type { GlidePath, Goal, Simulation } from '../../lib/queries'
@@ -10,6 +11,8 @@ import { useSettled } from '../../lib/useSettled'
 import { usePebble } from '../../pebble/PebbleProvider'
 
 const EXPLAINED_KEY = 'cairn.explained.glide_path'
+// The scrubber moves in hundredths of a year so it glides; it snaps to a whole year on release.
+const FINE_STEP = 0.01
 
 /**
  * A scrubber over the years to the goal. Dragging morphs the allocation bar along the glide
@@ -28,11 +31,16 @@ export function TimeMachine({
 }) {
   const { t, language } = useLanguage()
   const pebble = usePebble()
-  const [year, setYear] = useState(0)
-  const settled = useSettled(year, 150)
+  // `position` is in years and moves continuously while dragging; `year` is the whole year shown.
+  const [position, setPosition] = useState(0)
+  const year = Math.round(position)
+  const settled = useSettled(position, 150)
   const explained = useRef(readStorage(EXPLAINED_KEY) === 'seen')
   const points = glidePath.points
-  const point = points[Math.min(year, points.length - 1)]
+  const lastIndex = points.length - 1
+  const below = Math.min(Math.floor(position), lastIndex)
+  const above = Math.min(below + 1, lastIndex)
+  const weights = blendWeights(points[below].weights, points[above].weights, position - below)
 
   const month = Math.min(year * 12, simulation.months[simulation.months.length - 1])
   const index = simulation.months.indexOf(month)
@@ -40,7 +48,7 @@ export function TimeMachine({
   date.setMonth(date.getMonth() + month)
 
   const onChange = (next: number) => {
-    setYear(next)
+    setPosition(next)
     if (explained.current) return
     explained.current = true
     writeStorage(EXPLAINED_KEY, 'seen')
@@ -61,12 +69,16 @@ export function TimeMachine({
     <div className="flex flex-col gap-5">
       <Slider
         label={t('timeMachineYear')}
-        value={year}
+        value={position}
         min={0}
-        max={points.length - 1}
+        max={lastIndex}
+        step={FINE_STEP}
+        keyStep={1}
         onChange={onChange}
-        format={(y) =>
-          y === 0
+        onCommit={(value) => setPosition(Math.round(value))}
+        format={(value) => {
+          const y = Math.round(value)
+          return y === 0
             ? t('chartToday')
             : t('timeMachineValue', {
                 year: y,
@@ -75,9 +87,9 @@ export function TimeMachine({
                   language,
                 ),
               })
-        }
+        }}
       />
-      <AllocationBar id="time-machine" weights={point.weights} sketchy={settled} />
+      <AllocationBar id="time-machine" weights={weights} sketchy={settled} />
       {index >= 0 && (
         <p>
           <span className="block text-sm text-graphite">
