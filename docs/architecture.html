@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Cairn architecture</title>
+<!-- Source of docs/architecture.jpg: open in a browser at 1536 px wide and take a screenshot. -->
+<link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; background: #fbfcfd; }
+  body {
+    background-image:
+      linear-gradient(to right, #b9cbe0 1px, transparent 1px),
+      linear-gradient(to bottom, #b9cbe0 1px, transparent 1px),
+      linear-gradient(to right, #d6e4f0 1px, transparent 1px),
+      linear-gradient(to bottom, #d6e4f0 1px, transparent 1px);
+    background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
+  }
+  svg { display: block; }
+  text { font-family: 'Architects Daughter', cursive; fill: #1d3a6b; paint-order: stroke; stroke: #fbfcfd; stroke-width: 6px; stroke-linejoin: round; }
+</style>
+<script src="https://unpkg.com/roughjs@4.6.6/bundled/rough.js"></script>
+</head>
+<body>
+<svg id="d" width="1520" height="660"></svg>
+<script>
+const svg = document.getElementById('d')
+const rc = rough.svg(svg)
+const INK = '#1d3a6b', GRAPHITE = '#5e6670'
+let seed = 7
+const add = (n) => { svg.appendChild(n); return n }
+const box = (x, y, w, h, color, opts = {}) =>
+  add(rc.rectangle(x, y, w, h, { stroke: INK, strokeWidth: 1.8, roughness: 1.2, fill: color,
+    fillStyle: 'hachure', hachureGap: 7, fillWeight: 1, seed: seed++, ...opts }))
+const text = (x, y, s, size = 20, anchor = 'middle', color = INK) => {
+  const t = document.createElementNS('http://www.w3.org/2000/svg', 'text')
+  t.setAttribute('x', x); t.setAttribute('y', y); t.setAttribute('font-size', size)
+  t.setAttribute('text-anchor', anchor); t.style.fill = color; t.textContent = s
+  return add(t)
+}
+const lines = (x, y, arr, size = 17, gap = 23, anchor = 'middle', color = INK) =>
+  arr.forEach((s, i) => text(x, y + i * gap, s, size, anchor, color))
+const arrow = (x1, y1, x2, y2, opts = {}) => {
+  add(rc.line(x1, y1, x2, y2, { stroke: INK, strokeWidth: 2, roughness: 1, seed: seed++, ...opts }))
+  const a = Math.atan2(y2 - y1, x2 - x1), l = 14
+  add(rc.linearPath([
+    [x2 - l * Math.cos(a - 0.45), y2 - l * Math.sin(a - 0.45)], [x2, y2],
+    [x2 - l * Math.cos(a + 0.45), y2 - l * Math.sin(a + 0.45)],
+  ], { stroke: INK, strokeWidth: 2, roughness: 0.8, seed: seed++ }))
+}
+
+text(760, 50, 'How Cairn fits together', 38)
+
+// 1. The person
+add(rc.circle(105, 300, 64, { stroke: INK, strokeWidth: 2, roughness: 1.3, seed: seed++ }))
+add(rc.line(105, 332, 105, 400, { stroke: INK, strokeWidth: 2, seed: seed++ }))
+add(rc.line(70, 355, 140, 355, { stroke: INK, strokeWidth: 2, seed: seed++ }))
+add(rc.linearPath([[78, 450], [105, 400], [132, 450]], { stroke: INK, strokeWidth: 2, seed: seed++ }))
+lines(105, 488, ['You, in a', 'browser'], 19)
+
+// 2. Web app
+box(205, 160, 300, 330, '#ffe45c', { hachureGap: 10 })
+text(355, 200, 'The web app', 26)
+lines(355, 238, ['Vercel · React'], 16, 22, 'middle', GRAPHITE)
+lines(355, 285, ['screens you click', 'hand-drawn charts', 'Pebble, the robot guide', 'that explains every word'], 18, 30)
+arrow(150, 320, 200, 320)
+
+// 3. API
+box(600, 110, 560, 470, '#d6e4f0', { fillStyle: 'solid' })
+text(880, 148, 'The API', 26)
+lines(880, 175, ['Render · Python + FastAPI'], 16, 22, 'middle', GRAPHITE)
+arrow(510, 300, 595, 300)
+text(552, 288, 'asks', 16)
+
+box(625, 200, 245, 175, '#5896e0')
+text(747, 235, 'The maths', 23); lines(747, 267, ['risk profiles', '5,000 possible futures', 'safer near the date', 'rebalancing · crises'], 17, 26)
+
+box(890, 200, 245, 175, '#7fd39a')
+text(1012, 235, 'The ledger', 23); lines(1012, 272, ['every euro is', 'written twice', 'and always balances'], 17, 28)
+
+box(625, 395, 510, 160, '#f6b98a')
+text(880, 432, "Pebble's words", 23); lines(880, 467, ['exact numbers from the maths, told in plain French or English.', 'a guard checks every figure; without AI, written templates.'], 17, 30)
+
+// 4. Database
+add(rc.ellipse(1340, 200, 170, 44, { stroke: INK, strokeWidth: 1.8, fill: '#c9b4ef', fillStyle: 'hachure', hachureGap: 7, seed: seed++ }))
+add(rc.line(1255, 200, 1255, 300, { stroke: INK, strokeWidth: 1.8, seed: seed++ }))
+add(rc.line(1425, 200, 1425, 300, { stroke: INK, strokeWidth: 1.8, seed: seed++ }))
+add(rc.path('M1255 300 A85 22 0 0 0 1425 300', { stroke: INK, strokeWidth: 1.8, seed: seed++ }))
+lines(1340, 255, ['Database', 'PostgreSQL'], 18, 24)
+arrow(1140, 260, 1250, 250)
+
+// 5. OpenAI (optional)
+box(1255, 420, 190, 110, 'none', { strokeLineDash: [8, 8] })
+lines(1350, 455, ['OpenAI', '(optional)', 'only rephrases'], 17, 26)
+arrow(1140, 475, 1250, 475, { strokeLineDash: [6, 6] })
+
+// 6. Team tools
+lines(880, 620, ['Behind the scenes: Sentry catches errors · Metabase draws charts for the team · GitHub Actions tests every change'], 17, 24, 'middle', GRAPHITE)
+</script>
+</body>
+</html>
