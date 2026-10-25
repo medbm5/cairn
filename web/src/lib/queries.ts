@@ -221,3 +221,16 @@ export function useAskSupport(clientId: number | null) {
       ),
   })
 }
+
+// --- Observability ---
+
+export type ObservabilityStats = Schemas['ObservabilityStats']
+
+export function useObservability(autoRefresh: boolean) {
+  return useQuery({
+    queryKey: ['observability'],
+    queryFn: async () => unwrap(await api.GET('/observability/stats')),
+    refetchInterval: autoRefresh ? 5_000 : false,
+    placeholderData: keepPreviousData,
+  })
+}

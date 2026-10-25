@@ -359,3 +359,94 @@ class SupportAnswerOut(BaseModel):
     focus: Literal["month_change", "last_rebalance"]
     breakdown: BreakdownOut
     event_ids: list[int] = Field(description="Timeline events the answer is about.")
+
+
+# --- Observability ---
+
+
+class RouteStats(BaseModel):
+    method: str
+    route: str
+    count: int
+    errors: int
+    p50_ms: float
+    p95_ms: float
+
+
+class RequestOut(BaseModel):
+    at: datetime
+    method: str
+    route: str
+    path: str
+    status: int
+    duration_ms: float
+    request_id: str
+
+
+class ApiStats(BaseModel):
+    requests: int
+    status_counts: dict[str, int]
+    error_rate: float
+    p50_ms: float
+    p95_ms: float
+    routes: list[RouteStats]
+    recent: list[RequestOut]
+
+
+class TopicStats(BaseModel):
+    topic: str
+    explanations: int
+    ai: int
+    cache: int
+    fallback: int
+    calls: int
+    input_tokens: int
+    output_tokens: int
+    cost_usd: float
+
+
+class LlmCallOut(BaseModel):
+    at: datetime
+    topic: str
+    model: str
+    ok: bool
+    input_tokens: int
+    output_tokens: int
+    reasoning_tokens: int
+    latency_ms: float
+    cost_usd: float | None
+    error: str | None
+    request_id: str | None
+
+
+class LlmStats(BaseModel):
+    model: str
+    enabled: bool
+    explanations: int
+    sources: dict[str, int]
+    fallback_reasons: dict[str, int]
+    calls: int
+    failed_calls: int
+    input_tokens: int
+    output_tokens: int
+    reasoning_tokens: int
+    cost_usd: float | None
+    avg_latency_ms: float
+    topics: list[TopicStats]
+    recent: list[LlmCallOut]
+
+
+class LogLineOut(BaseModel):
+    at: str
+    level: str
+    event: str
+    logger: str | None
+    request_id: str | None
+    fields: dict[str, Any]
+
+
+class ObservabilityStats(BaseModel):
+    since: datetime
+    api: ApiStats
+    llm: LlmStats
+    logs: list[LogLineOut]

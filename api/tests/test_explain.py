@@ -193,7 +193,8 @@ def test_ai_output_is_used_when_it_passes_the_guard() -> None:
     assert result.source == "ai"
     assert result.terms_used == ["median", "success_probability"]
     prompt = explainer.generate.call_args.args[0]
-    assert "13250000" in prompt and "WORD LIMIT FOR BODY: 60" in prompt
+    assert '"p50_eur":132500.0' in prompt and "WORD LIMIT FOR BODY: 60" in prompt
+    assert "_cents" not in prompt  # the model never has to convert cents
 
 
 def test_ai_output_with_unknown_number_falls_back() -> None:

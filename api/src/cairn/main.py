@@ -14,6 +14,7 @@ from cairn.routers import (
     goals,
     health,
     ledger,
+    observability,
     profiles,
     simulations,
     stress,
@@ -43,6 +44,7 @@ def create_app() -> FastAPI:
     app.include_router(stress.router)
     app.include_router(explain.router)
     app.include_router(support.router)
+    app.include_router(observability.router)
     if settings.environment == "local":
         app.include_router(debug.router)
     return app

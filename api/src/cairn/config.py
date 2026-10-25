@@ -17,7 +17,8 @@ class Settings(BaseSettings):
     )
     sentry_dsn: str = ""
     openai_api_key: str = ""
-    openai_model: str = "gpt-4o-mini"
+    # The cheapest current model is plenty for rephrasing facts (see ADR 0003).
+    openai_model: str = "gpt-5-nano"
     # Git SHA of the deployed code; Render sets RENDER_GIT_COMMIT automatically.
     release: str = Field(
         default="", validation_alias=AliasChoices("RELEASE", "GIT_SHA", "RENDER_GIT_COMMIT")

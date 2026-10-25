@@ -31,8 +31,13 @@ The model **explains and never computes.**
    API errors, on answers over the word limit, and when the guard rejects an answer. The UI
    cannot tell the difference except for the `source` field, so the app is complete without
    the model.
-5. **Cost is bounded.** Answers are cached by a hash of topic, facts, level and language; output
-   tokens are capped; `/explain` is rate-limited per client IP.
+5. **Cost is bounded.** The default model is the cheapest current one (`gpt-5-nano`, minimal
+   reasoning effort): rephrasing given facts needs no more. Prompts are short, facts go as
+   compact JSON with amounts already in euros and only the fields a question needs, output is
+   capped at 400 tokens, glossary terms never call the model (their text is written by hand),
+   answers are cached by a hash of topic, facts, level and language, and `/explain` and the
+   support questions share a per-IP rate limit. Every call's tokens and estimated cost are shown
+   on `/observability`.
 
 ## Consequences
 

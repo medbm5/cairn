@@ -23,7 +23,7 @@ services:
         # https://cairn.vercel.app,http://localhost:5173
         sync: false
       - key: OPENAI_MODEL
-        value: gpt-4o-mini
+        value: gpt-5-nano
       - key: OPENAI_API_KEY
         sync: false
       - key: SENTRY_DSN

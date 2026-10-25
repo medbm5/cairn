@@ -1106,6 +1106,51 @@
         }
       }
     },
+    "/observability/stats": {
+      "get": {
+        "tags": [
+          "observability"
+        ],
+        "summary": "Get Stats",
+        "operationId": "get_stats_observability_stats_get",
+        "parameters": [
+          {
+            "name": "recent",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Recent"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservabilityStats"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/debug/sentry": {
       "get": {
         "tags": [
@@ -1128,6 +1173,58 @@
   },
   "components": {
     "schemas": {
+      "ApiStats": {
+        "properties": {
+          "requests": {
+            "type": "integer",
+            "title": "Requests"
+          },
+          "status_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Status Counts"
+          },
+          "error_rate": {
+            "type": "number",
+            "title": "Error Rate"
+          },
+          "p50_ms": {
+            "type": "number",
+            "title": "P50 Ms"
+          },
+          "p95_ms": {
+            "type": "number",
+            "title": "P95 Ms"
+          },
+          "routes": {
+            "items": {
+              "$ref": "#/components/schemas/RouteStats"
+            },
+            "type": "array",
+            "title": "Routes"
+          },
+          "recent": {
+            "items": {
+              "$ref": "#/components/schemas/RequestOut"
+            },
+            "type": "array",
+            "title": "Recent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "requests",
+          "status_counts",
+          "error_rate",
+          "p50_ms",
+          "p95_ms",
+          "routes",
+          "recent"
+        ],
+        "title": "ApiStats"
+      },
       "AssetClass": {
         "type": "string",
         "enum": [
@@ -1894,6 +1991,271 @@
         ],
         "title": "JournalLineOut"
       },
+      "LlmCallOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "topic": {
+            "type": "string",
+            "title": "Topic"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "input_tokens": {
+            "type": "integer",
+            "title": "Input Tokens"
+          },
+          "output_tokens": {
+            "type": "integer",
+            "title": "Output Tokens"
+          },
+          "reasoning_tokens": {
+            "type": "integer",
+            "title": "Reasoning Tokens"
+          },
+          "latency_ms": {
+            "type": "number",
+            "title": "Latency Ms"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "topic",
+          "model",
+          "ok",
+          "input_tokens",
+          "output_tokens",
+          "reasoning_tokens",
+          "latency_ms",
+          "cost_usd",
+          "error",
+          "request_id"
+        ],
+        "title": "LlmCallOut"
+      },
+      "LlmStats": {
+        "properties": {
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "explanations": {
+            "type": "integer",
+            "title": "Explanations"
+          },
+          "sources": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Sources"
+          },
+          "fallback_reasons": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Fallback Reasons"
+          },
+          "calls": {
+            "type": "integer",
+            "title": "Calls"
+          },
+          "failed_calls": {
+            "type": "integer",
+            "title": "Failed Calls"
+          },
+          "input_tokens": {
+            "type": "integer",
+            "title": "Input Tokens"
+          },
+          "output_tokens": {
+            "type": "integer",
+            "title": "Output Tokens"
+          },
+          "reasoning_tokens": {
+            "type": "integer",
+            "title": "Reasoning Tokens"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "avg_latency_ms": {
+            "type": "number",
+            "title": "Avg Latency Ms"
+          },
+          "topics": {
+            "items": {
+              "$ref": "#/components/schemas/TopicStats"
+            },
+            "type": "array",
+            "title": "Topics"
+          },
+          "recent": {
+            "items": {
+              "$ref": "#/components/schemas/LlmCallOut"
+            },
+            "type": "array",
+            "title": "Recent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model",
+          "enabled",
+          "explanations",
+          "sources",
+          "fallback_reasons",
+          "calls",
+          "failed_calls",
+          "input_tokens",
+          "output_tokens",
+          "reasoning_tokens",
+          "cost_usd",
+          "avg_latency_ms",
+          "topics",
+          "recent"
+        ],
+        "title": "LlmStats"
+      },
+      "LogLineOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "title": "At"
+          },
+          "level": {
+            "type": "string",
+            "title": "Level"
+          },
+          "event": {
+            "type": "string",
+            "title": "Event"
+          },
+          "logger": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logger"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
+          "fields": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Fields"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "level",
+          "event",
+          "logger",
+          "request_id",
+          "fields"
+        ],
+        "title": "LogLineOut"
+      },
+      "ObservabilityStats": {
+        "properties": {
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Since"
+          },
+          "api": {
+            "$ref": "#/components/schemas/ApiStats"
+          },
+          "llm": {
+            "$ref": "#/components/schemas/LlmStats"
+          },
+          "logs": {
+            "items": {
+              "$ref": "#/components/schemas/LogLineOut"
+            },
+            "type": "array",
+            "title": "Logs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "since",
+          "api",
+          "llm",
+          "logs"
+        ],
+        "title": "ObservabilityStats"
+      },
       "OptionOut": {
         "properties": {
           "id": {
@@ -2165,6 +2527,50 @@
         ],
         "title": "ReplayOut"
       },
+      "RequestOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "method": {
+            "type": "string",
+            "title": "Method"
+          },
+          "route": {
+            "type": "string",
+            "title": "Route"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "status": {
+            "type": "integer",
+            "title": "Status"
+          },
+          "duration_ms": {
+            "type": "number",
+            "title": "Duration Ms"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "method",
+          "route",
+          "path",
+          "status",
+          "duration_ms",
+          "request_id"
+        ],
+        "title": "RequestOut"
+      },
       "RiskProfile": {
         "type": "string",
         "enum": [
@@ -2175,6 +2581,44 @@
           "bold"
         ],
         "title": "RiskProfile"
+      },
+      "RouteStats": {
+        "properties": {
+          "method": {
+            "type": "string",
+            "title": "Method"
+          },
+          "route": {
+            "type": "string",
+            "title": "Route"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "errors": {
+            "type": "integer",
+            "title": "Errors"
+          },
+          "p50_ms": {
+            "type": "number",
+            "title": "P50 Ms"
+          },
+          "p95_ms": {
+            "type": "number",
+            "title": "P95 Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "method",
+          "route",
+          "count",
+          "errors",
+          "p50_ms",
+          "p95_ms"
+        ],
+        "title": "RouteStats"
       },
       "Scenario": {
         "type": "string",
@@ -2578,6 +3022,59 @@
           "term"
         ],
         "title": "Topic"
+      },
+      "TopicStats": {
+        "properties": {
+          "topic": {
+            "type": "string",
+            "title": "Topic"
+          },
+          "explanations": {
+            "type": "integer",
+            "title": "Explanations"
+          },
+          "ai": {
+            "type": "integer",
+            "title": "Ai"
+          },
+          "cache": {
+            "type": "integer",
+            "title": "Cache"
+          },
+          "fallback": {
+            "type": "integer",
+            "title": "Fallback"
+          },
+          "calls": {
+            "type": "integer",
+            "title": "Calls"
+          },
+          "input_tokens": {
+            "type": "integer",
+            "title": "Input Tokens"
+          },
+          "output_tokens": {
+            "type": "integer",
+            "title": "Output Tokens"
+          },
+          "cost_usd": {
+            "type": "number",
+            "title": "Cost Usd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic",
+          "explanations",
+          "ai",
+          "cache",
+          "fallback",
+          "calls",
+          "input_tokens",
+          "output_tokens",
+          "cost_usd"
+        ],
+        "title": "TopicStats"
       },
       "ValidationError": {
         "properties": {

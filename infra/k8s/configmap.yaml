@@ -7,4 +7,4 @@ metadata:
 data:
   ENVIRONMENT: production
   CORS_ORIGINS: https://your-app.vercel.app
-  OPENAI_MODEL: gpt-4o-mini
+  OPENAI_MODEL: gpt-5-nano

@@ -364,6 +364,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/observability/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stats */
+        get: operations["get_stats_observability_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/debug/sentry": {
         parameters: {
             query?: never;
@@ -385,6 +402,25 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ApiStats */
+        ApiStats: {
+            /** Requests */
+            requests: number;
+            /** Status Counts */
+            status_counts: {
+                [key: string]: number;
+            };
+            /** Error Rate */
+            error_rate: number;
+            /** P50 Ms */
+            p50_ms: number;
+            /** P95 Ms */
+            p95_ms: number;
+            /** Routes */
+            routes: components["schemas"]["RouteStats"][];
+            /** Recent */
+            recent: components["schemas"]["RequestOut"][];
+        };
         /**
          * AssetClass
          * @enum {string}
@@ -658,6 +694,98 @@ export interface components {
             /** Amount Cents */
             amount_cents: number;
         };
+        /** LlmCallOut */
+        LlmCallOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Topic */
+            topic: string;
+            /** Model */
+            model: string;
+            /** Ok */
+            ok: boolean;
+            /** Input Tokens */
+            input_tokens: number;
+            /** Output Tokens */
+            output_tokens: number;
+            /** Reasoning Tokens */
+            reasoning_tokens: number;
+            /** Latency Ms */
+            latency_ms: number;
+            /** Cost Usd */
+            cost_usd: number | null;
+            /** Error */
+            error: string | null;
+            /** Request Id */
+            request_id: string | null;
+        };
+        /** LlmStats */
+        LlmStats: {
+            /** Model */
+            model: string;
+            /** Enabled */
+            enabled: boolean;
+            /** Explanations */
+            explanations: number;
+            /** Sources */
+            sources: {
+                [key: string]: number;
+            };
+            /** Fallback Reasons */
+            fallback_reasons: {
+                [key: string]: number;
+            };
+            /** Calls */
+            calls: number;
+            /** Failed Calls */
+            failed_calls: number;
+            /** Input Tokens */
+            input_tokens: number;
+            /** Output Tokens */
+            output_tokens: number;
+            /** Reasoning Tokens */
+            reasoning_tokens: number;
+            /** Cost Usd */
+            cost_usd: number | null;
+            /** Avg Latency Ms */
+            avg_latency_ms: number;
+            /** Topics */
+            topics: components["schemas"]["TopicStats"][];
+            /** Recent */
+            recent: components["schemas"]["LlmCallOut"][];
+        };
+        /** LogLineOut */
+        LogLineOut: {
+            /** At */
+            at: string;
+            /** Level */
+            level: string;
+            /** Event */
+            event: string;
+            /** Logger */
+            logger: string | null;
+            /** Request Id */
+            request_id: string | null;
+            /** Fields */
+            fields: {
+                [key: string]: unknown;
+            };
+        };
+        /** ObservabilityStats */
+        ObservabilityStats: {
+            /**
+             * Since
+             * Format: date-time
+             */
+            since: string;
+            api: components["schemas"]["ApiStats"];
+            llm: components["schemas"]["LlmStats"];
+            /** Logs */
+            logs: components["schemas"]["LogLineOut"][];
+        };
         /** OptionOut */
         OptionOut: {
             /** Id */
@@ -753,11 +881,46 @@ export interface components {
             /** Rebalances */
             rebalances: number;
         };
+        /** RequestOut */
+        RequestOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Method */
+            method: string;
+            /** Route */
+            route: string;
+            /** Path */
+            path: string;
+            /** Status */
+            status: number;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Request Id */
+            request_id: string;
+        };
         /**
          * RiskProfile
          * @enum {string}
          */
         RiskProfile: "prudent" | "moderate" | "balanced" | "dynamic" | "bold";
+        /** RouteStats */
+        RouteStats: {
+            /** Method */
+            method: string;
+            /** Route */
+            route: string;
+            /** Count */
+            count: number;
+            /** Errors */
+            errors: number;
+            /** P50 Ms */
+            p50_ms: number;
+            /** P95 Ms */
+            p95_ms: number;
+        };
         /**
          * Scenario
          * @enum {string}
@@ -920,6 +1083,27 @@ export interface components {
          * @enum {string}
          */
         Topic: "projection" | "allocation" | "glide_path" | "rebalance" | "stress_test" | "ledger_entry" | "support_answer" | "term";
+        /** TopicStats */
+        TopicStats: {
+            /** Topic */
+            topic: string;
+            /** Explanations */
+            explanations: number;
+            /** Ai */
+            ai: number;
+            /** Cache */
+            cache: number;
+            /** Fallback */
+            fallback: number;
+            /** Calls */
+            calls: number;
+            /** Input Tokens */
+            input_tokens: number;
+            /** Output Tokens */
+            output_tokens: number;
+            /** Cost Usd */
+            cost_usd: number;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -1663,6 +1847,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SupportAnswerOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stats_observability_stats_get: {
+        parameters: {
+            query?: {
+                recent?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObservabilityStats"];
                 };
             };
             /** @description Validation Error */

@@ -31,6 +31,12 @@ export const routes = [
         path: '/support',
         lazy: async () => ({ Component: (await import('../routes/SupportPage')).SupportPage }),
       },
+      {
+        path: '/observability',
+        lazy: async () => ({
+          Component: (await import('../routes/ObservabilityPage')).ObservabilityPage,
+        }),
+      },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

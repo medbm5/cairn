@@ -9,12 +9,13 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from cairn.explain.client import OpenAIExplainer
-from cairn.explain.facts import FactsModel, Topic
+from cairn.explain.client import GeneratedExplanation, OpenAIExplainer
+from cairn.explain.facts import FactsModel, SupportAnswerFacts, Topic
 from cairn.explain.fallbacks import Text, fallback
 from cairn.explain.glossary import GLOSSARY, Language
 from cairn.explain.guard import unknown_numbers
 from cairn.logging import get_logger
+from cairn.observability import record_explanation
 
 log = get_logger("cairn.explain")
 
@@ -106,6 +107,35 @@ SUPPORT_INSTRUCTIONS = (
 )
 
 
+def compact_json(value: object) -> str:
+    """JSON without spaces or escaped accents: fewer tokens for the same facts."""
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
+def prompt_facts(facts: FactsModel | None) -> dict[str, object]:
+    """The facts as the model sees them: amounts already in euros, so it never has to convert
+    (it once divided cents by 1,000). The guard still checks every figure against the cents."""
+    if facts is None:
+        return {}
+    data = facts.model_dump(mode="json", exclude_none=True)
+    if isinstance(facts, SupportAnswerFacts) and facts.focus == "last_rebalance":
+        # The month's figures are irrelevant to this question: leaving them out saves tokens and
+        # keeps the model from mixing them into the answer.
+        data = {k: v for k, v in data.items() if k in ("question", "focus") or "rebalance" in k}
+
+    def euros(cents: object) -> object:
+        if isinstance(cents, dict):
+            return {key: euros(value) for key, value in cents.items()}
+        return cents / 100 if isinstance(cents, int) else cents
+
+    return {
+        (f"{name.removesuffix('_cents')}_eur" if name.endswith("_cents") else name): (
+            euros(value) if name.endswith("_cents") else value
+        )
+        for name, value in data.items()
+    }
+
+
 def build_prompt(
     topic: Topic,
     facts: FactsModel | None,
@@ -122,10 +152,10 @@ def build_prompt(
         f"TOPIC: {topic}" + (f" ({term})" if term else ""),
         f"LANGUAGE: {'French' if language == 'fr' else 'English'}",
         f"WORD LIMIT FOR BODY: {WORD_LIMITS[level]}",
-        "AMOUNTS: values ending in _cents are euro cents; write them in euros.",
+        "AMOUNTS: values ending in _eur are euros; copy them exactly.",
         "FRACTIONS: 0.25 means 25%.",
-        f"FACTS: {json.dumps(facts.model_dump(mode='json') if facts else {})}",
-        f"GLOSSARY: {json.dumps(glossary, ensure_ascii=False)}",
+        f"FACTS: {compact_json(prompt_facts(facts))}",
+        f"GLOSSARY: {compact_json(glossary)}",
     ]
     if topic == Topic.SUPPORT_ANSWER:
         lines.append(SUPPORT_INSTRUCTIONS)
@@ -144,6 +174,14 @@ def check_generated(
     return None
 
 
+def usable_title(generated: str, template: str) -> str:
+    """Small models sometimes echo the schema name as the heading; use the template's then."""
+    cleaned = generated.strip()
+    if not cleaned or cleaned == GeneratedExplanation.__name__ or len(cleaned.split()) > 10:
+        return template
+    return cleaned
+
+
 def explain(
     *,
     topic: Topic,
@@ -157,13 +195,19 @@ def explain(
     key = cache_key(topic, facts, term, level, language)
     cached = cache.get(key)
     if cached is not None:
+        record_explanation(topic, "cache")
         return cached
 
     template: Text = fallback(topic, facts, term, level, language)
-    if explainer is not None:
+    # Glossary terms already have a human-written definition and analogy: no model call needed.
+    reason: str | None = "no_key" if explainer is None else None
+    if topic == Topic.TERM:
+        reason = "glossary"
+    if reason is None and explainer is not None:
         prompt = build_prompt(topic, facts, term, level, language, template.terms_used)
-        generated = explainer.generate(prompt)
+        generated = explainer.generate(prompt, topic=topic.value)
         if generated is None:
+            reason = "model_error"
             log.warning("explain.fallback", topic=topic, reason="no_output")
         else:
             reason = check_generated(
@@ -171,16 +215,19 @@ def explain(
             )
             if reason is None:
                 explanation = Explanation(
-                    title=generated.title,
+                    title=usable_title(generated.title, template.title),
                     body=generated.body,
                     analogy=generated.analogy,
                     terms_used=[t for t in generated.terms_used if t in GLOSSARY],
                     source="ai",
                 )
                 cache.put(key, explanation)
+                record_explanation(topic, "ai")
                 return explanation
             log.warning("explain.guard_rejected", topic=topic, reason=reason)
+            reason = "guard_rejected"
 
+    record_explanation(topic, "fallback", reason)
     # Templates are not cached: they are free, and a later call may reach the model.
     return Explanation(
         title=template.title,
